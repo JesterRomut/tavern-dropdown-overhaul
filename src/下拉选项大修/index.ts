@@ -267,7 +267,7 @@ const init = () => {
 
   // 全局点击关闭
   // 使用 document 而不是 window，兼容性更好
-  $(document).on('mousedown', e => {
+  $(document).on('mousedown', () => {
     // 这里的逻辑是：
     // Trigger 的 mousedown 阻止了冒泡，不会到这里
     // Dropdown 内部的 mousedown 也阻止了冒泡，不会到这里
