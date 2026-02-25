@@ -82,27 +82,27 @@ const styles = `
   }
 `;
 
-function injectGlobalStyles() {
+const injectGlobalStyles = () => {
   $(`#${STYLE_ID}`).remove();
   $(`<style id="${STYLE_ID}">${styles}</style>`).appendTo('head');
-}
+};
+
+const closeDropdown = () => {
+  // 1. 先处理事件清理：找到当前激活的 select
+  const $activeSelect = $(`.${TRIGGER_ACTIVE_CLASS}`);
+  if ($activeSelect.length) {
+    // 移除该 select 所有父级元素上的滚动监听，避免内存泄漏和不必要的触发
+    // add(window) 确保同时也移除了 window 上的监听
+    $activeSelect.parents().add(document).off(`.${SCROLL_NAMESPACE}`);
+    $activeSelect.removeClass(TRIGGER_ACTIVE_CLASS);
+  }
+
+  // 2. 移除 DOM
+  $(`#${DROPDOWN_ID}`).remove();
+};
 
 const init = () => {
   injectGlobalStyles();
-
-  const closeDropdown = () => {
-    // 1. 先处理事件清理：找到当前激活的 select
-    const $activeSelect = $(`.${TRIGGER_ACTIVE_CLASS}`);
-    if ($activeSelect.length) {
-      // 移除该 select 所有父级元素上的滚动监听，避免内存泄漏和不必要的触发
-      // add(window) 确保同时也移除了 window 上的监听
-      $activeSelect.parents().add(document).off(`.${SCROLL_NAMESPACE}`);
-      $activeSelect.removeClass(TRIGGER_ACTIVE_CLASS);
-    }
-
-    // 2. 移除 DOM
-    $(`#${DROPDOWN_ID}`).remove();
-  };
 
   const processSelects = () => {
     $('select')
@@ -115,7 +115,6 @@ const init = () => {
           if (e.button !== 0) return;
 
           e.preventDefault();
-          e.stopPropagation(); // 阻止冒泡，防止触发 document 的关闭事件
           this.focus();
 
           const isActive = $select.hasClass(TRIGGER_ACTIVE_CLASS);
@@ -265,16 +264,6 @@ const init = () => {
     }, 10);
   };
 
-  // 全局点击关闭
-  // 使用 document 而不是 window，兼容性更好
-  $(document).on('mousedown', () => {
-    // 这里的逻辑是：
-    // Trigger 的 mousedown 阻止了冒泡，不会到这里
-    // Dropdown 内部的 mousedown 也阻止了冒泡，不会到这里
-    // 所以只要代码执行到这里，说明点击在了外部
-    closeDropdown();
-  });
-
   processSelects();
 
   const observer = new MutationObserver(mutations => {
@@ -288,9 +277,18 @@ const init = () => {
     if (needsProcess) processSelects();
   });
 
-  observer.observe(document.body, { childList: true, subtree: true });
+  observer.observe(window.parent.document, { childList: true, subtree: true });
+
+  // 全局点击关闭
+  // 使用 document 而不是 window，兼容性更好
 };
 
 $(() => {
   init();
+
+  window.parent.document.addEventListener('click', e => {
+    if (!e.target) return;
+    if ((e.target as Element).hasAttribute(REPLACED_MARKER)) return;
+    closeDropdown();
+  });
 });
