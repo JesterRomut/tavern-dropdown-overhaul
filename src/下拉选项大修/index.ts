@@ -13,7 +13,6 @@ const styles = `
       position: absolute;
       z-index: 99999;
       box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-      /* 整体最大高度，包含搜索栏 */
       max-height: 400px;
       display: flex;
       flex-direction: column;
@@ -22,10 +21,9 @@ const styles = `
       border: 1px solid var(--SmartThemeBorderColor, #444);
       border-radius: 4px;
       font-size: 14px;
-      overflow: hidden; /* 防止圆角溢出 */
+      overflow: hidden;
   }
 
-  /* 搜索栏容器 - 固定在顶部 */
   #${DROPDOWN_ID} .search-wrapper {
       padding: 8px;
       background: rgba(0, 0, 0, 0.2);
@@ -33,7 +31,6 @@ const styles = `
       flex-shrink: 0;
   }
 
-  /* 搜索输入框 */
   #${DROPDOWN_ID} .search-input {
       width: 100%;
       padding: 6px 8px;
@@ -49,14 +46,12 @@ const styles = `
       background: rgba(0, 0, 0, 0.5);
   }
 
-  /* 选项列表容器 - 负责滚动 */
   #${DROPDOWN_ID} .options-list {
       overflow-y: auto;
       flex-grow: 1;
-      max-height: 300px; /* 列表本身的最大高度 */
+      max-height: 300px;
   }
 
-  /* 滚动条美化 (针对 Webkit) */
   #${DROPDOWN_ID} .options-list::-webkit-scrollbar {
       width: 6px;
   }
@@ -78,7 +73,6 @@ const styles = `
       font-weight: bold;
       border-left: 3px solid var(--SmartThemeQuoteColor, #888);
   }
-  /* 搜索无结果时的提示 */
   #${DROPDOWN_ID} .no-results {
       padding: 12px;
       text-align: center;
