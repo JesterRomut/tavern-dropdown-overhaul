@@ -2,10 +2,10 @@ import { debounce } from 'lodash';
 
 /* eslint-disable better-tailwindcss/no-duplicate-classes */
 const REPLACED_MARKER = 'k3rn-replaced';
-const TRIGGER_ACTIVE_CLASS = 'k3rn-trigger-active'; // 激活状态类
+const ACTIVE_CLASS = 'k3rn-trigger-active';
 const DROPDOWN_ID = 'k3rn-global-dropdown';
 const STYLE_ID = `k3rn-select-style`;
-const SCROLL_NAMESPACE = 'k3rn-select-scroll'; // 用于滚动事件的命名空间
+const SCROLL_NAMESPACE = 'k3rn-scroll';
 
 // 1. 样式定义
 const styles = `
@@ -16,12 +16,14 @@ const styles = `
       max-height: 400px;
       display: flex;
       flex-direction: column;
-      background: var(--SmartThemeBorderColor, #1a1a1a);
-      color: var(--SmartThemeTextColor, #eee);
+      background: var(--SmartThemeBlurTintColor, #1a1a1a);
+      color: var(--SmartThemeBodyColor, #eee);
       border: 1px solid var(--SmartThemeBorderColor, #444);
       border-radius: 4px;
       font-size: 14px;
       overflow: hidden;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
   }
 
   #${DROPDOWN_ID} .search-wrapper {
@@ -76,7 +78,7 @@ const styles = `
   #${DROPDOWN_ID} .no-results {
       padding: 12px;
       text-align: center;
-      color: rgba(255, 255, 255, 0.5);
+      color: var(--SmartThemeBodyColor, #eee);
       font-style: italic;
       display: none;
   }
@@ -89,181 +91,178 @@ const injectGlobalStyles = () => {
 
 const closeDropdown = () => {
   // 1. 先处理事件清理：找到当前激活的 select
-  const $activeSelect = $(`.${TRIGGER_ACTIVE_CLASS}`);
+  const $activeSelect = $(`.${ACTIVE_CLASS}`);
   if ($activeSelect.length) {
     // 移除该 select 所有父级元素上的滚动监听，避免内存泄漏和不必要的触发
     // add(window) 确保同时也移除了 window 上的监听
     $activeSelect.parents().add(document).off(`.${SCROLL_NAMESPACE}`);
-    $activeSelect.removeClass(TRIGGER_ACTIVE_CLASS);
+    $activeSelect.removeClass(ACTIVE_CLASS);
   }
 
   // 2. 移除 DOM
   $(`#${DROPDOWN_ID}`).remove();
 };
 
-const init = () => {
-  injectGlobalStyles();
+const processSelects = () => {
+  $('select')
+    .not(`[${REPLACED_MARKER}]`)
+    .each(function () {
+      const $select = $(this);
+      $select.attr(REPLACED_MARKER, 'true');
 
-  const processSelects = () => {
-    $('select')
-      .not(`[${REPLACED_MARKER}]`)
-      .each(function () {
-        const $select = $(this);
-        $select.attr(REPLACED_MARKER, 'true');
+      $select.on('mousedown', function (e) {
+        if (e.button !== 0) return;
 
-        $select.on('mousedown', function (e) {
-          if (e.button !== 0) return;
+        e.preventDefault();
+        this.focus();
 
-          e.preventDefault();
-          this.focus();
+        const isActive = $select.hasClass(ACTIVE_CLASS);
 
-          const isActive = $select.hasClass(TRIGGER_ACTIVE_CLASS);
-
-          // 如果已经打开，再次点击则是关闭
-          if (isActive) {
-            closeDropdown();
-            return;
-          }
-
-          // 关闭其他可能存在的下拉
+        // 如果已经打开，再次点击则是关闭
+        if (isActive) {
           closeDropdown();
+          return;
+        }
 
-          openDropdown($select);
-        });
+        // 关闭其他可能存在的下拉
+        closeDropdown();
 
-        $select.on('keydown', function (e) {
-          if (e.key === ' ' || e.key === 'Enter') {
-            e.preventDefault();
-            e.stopPropagation();
-            const isActive = $select.hasClass(TRIGGER_ACTIVE_CLASS);
-            closeDropdown();
-            if (!isActive) openDropdown($select);
-          }
-        });
+        openDropdown($select);
       });
-  };
 
-  const openDropdown = ($select: JQuery<HTMLElement>) => {
-    $select.addClass(TRIGGER_ACTIVE_CLASS);
+      $select.on('keydown', function (e) {
+        if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          e.stopPropagation();
+          const isActive = $select.hasClass(ACTIVE_CLASS);
+          closeDropdown();
+          if (!isActive) openDropdown($select);
+        }
+      });
+    });
+};
 
-    // --- 新增功能：监听父级滚动 ---
-    // 获取当前 select 的所有父级元素以及 window
-    // 当父容器滚动时，下拉菜单位置会错位，因此需要关闭菜单
-    const $parents = $select.parents().add(document);
-    $parents.on(`scroll.${SCROLL_NAMESPACE}`, () => {
+const openDropdown = ($select: JQuery<HTMLElement>) => {
+  $select.addClass(ACTIVE_CLASS);
+
+  // 当父容器滚动时，下拉菜单位置会错位，因此需要关闭菜单
+  const $parents = $select.parents().add(document);
+  $parents.on(`scroll.${SCROLL_NAMESPACE}`, () => {
+    closeDropdown();
+  });
+  // ---------------------------
+
+  // 1. 构建基础结构
+  const $dropdown = $(`<div id="${DROPDOWN_ID}"></div>`);
+  const $searchWrapper = $(
+    `<div class="search-wrapper"><input type="text" class="search-input" placeholder="搜索…" /></div>`,
+  );
+  const $optionsList = $(`<div class="options-list"></div>`);
+  const $noResults = $(`<div class="no-results">无结果</div>`);
+
+  const $searchInput = $searchWrapper.find('input');
+  const options = $select.find('option');
+
+  // 2. 构建选项列表 (使用 DocumentFragment 优化插入性能)
+  const items: JQuery<HTMLElement>[] = [];
+
+  options.each((_: number, opt: HTMLElement) => {
+    const $opt = $(opt);
+    if ($opt.css('display') === 'none') return;
+
+    const text = $opt.text();
+    const isSelected = $opt.is(':selected');
+
+    const $item = $(`<div class="option-item ${isSelected ? 'selected' : ''}">${text}</div>`);
+
+    // 性能关键：将搜索用的文本存入 data 属性
+    $item.data('search-text', text.toLowerCase());
+
+    $item.on('click', e => {
+      // 阻止冒泡，防止触发 document 点击关闭，但我们需要先处理逻辑再关闭
+      e.stopPropagation();
+      $select.val($opt.val() ?? 'undefined');
+      $select.trigger('change');
       closeDropdown();
     });
-    // ---------------------------
+    // 防止在 item 上按下鼠标时触发 document 的关闭逻辑
+    $item.on('mousedown touchstart touchend', e => e.stopPropagation());
 
-    // 1. 构建基础结构
-    const $dropdown = $(`<div id="${DROPDOWN_ID}"></div>`);
-    const $searchWrapper = $(
-      `<div class="search-wrapper"><input type="text" class="search-input" placeholder="搜索…" /></div>`,
-    );
-    const $optionsList = $(`<div class="options-list"></div>`);
-    const $noResults = $(`<div class="no-results">无结果</div>`);
+    items.push($item);
+  });
 
-    const $searchInput = $searchWrapper.find('input');
-    const options = $select.find('option');
+  $optionsList.append(items);
+  $optionsList.append($noResults);
+  $dropdown.append($searchWrapper).append($optionsList);
+  $('body').append($dropdown);
 
-    // 2. 构建选项列表 (使用 DocumentFragment 优化插入性能)
-    const items: JQuery<HTMLElement>[] = [];
+  // 3. 搜索过滤逻辑
+  $searchInput.on(
+    'input',
+    debounce((e: any) => {
+      const val = e.target.value.toLowerCase().trim();
+      let hasVisible = false;
 
-    options.each((_: number, opt: HTMLElement) => {
-      const $opt = $(opt);
-      if ($opt.css('display') === 'none') return;
-
-      const text = $opt.text();
-      const isSelected = $opt.is(':selected');
-
-      const $item = $(`<div class="option-item ${isSelected ? 'selected' : ''}">${text}</div>`);
-
-      // 性能关键：将搜索用的文本存入 data 属性
-      $item.data('search-text', text.toLowerCase());
-
-      $item.on('click', e => {
-        // 阻止冒泡，防止触发 document 点击关闭，但我们需要先处理逻辑再关闭
-        e.stopPropagation();
-        $select.val($opt.val() ?? 'undefined');
-        $select.trigger('change');
-        closeDropdown();
-      });
-      // 防止在 item 上按下鼠标时触发 document 的关闭逻辑
-      $item.on('mousedown touchstart touchend', e => e.stopPropagation());
-
-      items.push($item);
-    });
-
-    $optionsList.append(items);
-    $optionsList.append($noResults);
-    $dropdown.append($searchWrapper).append($optionsList);
-    $('body').append($dropdown);
-
-    // 3. 搜索过滤逻辑
-    $searchInput.on(
-      'input',
-      debounce((e: any) => {
-        const val = e.target.value.toLowerCase().trim();
-        let hasVisible = false;
-
-        items.forEach($item => {
-          const itemText = $item.data('search-text');
-          if (!val || itemText.includes(val)) {
-            $item.css('display', '');
-            hasVisible = true;
-          } else {
-            $item.css('display', 'none');
-          }
-        });
-
-        if (hasVisible) {
-          $noResults.hide();
+      items.forEach($item => {
+        const itemText = $item.data('search-text');
+        if (!val || itemText.includes(val)) {
+          $item.css('display', '');
+          hasVisible = true;
         } else {
-          $noResults.show();
+          $item.css('display', 'none');
         }
-      }, 200),
-    );
+      });
 
-    // 防止点击输入框导致 dropdown 关闭
-    $searchInput.on('mousedown click touchstart touchend', e => e.stopPropagation());
-
-    // 4. 定位计算
-    const rect = $select[0].getBoundingClientRect();
-    const scrollTop = $(window).scrollTop() || 0;
-    const scrollLeft = $(window).scrollLeft() || 0;
-    const windowHeight = $(window).height() || 0;
-
-    const estimatedMaxHeight = 350;
-    const spaceBelow = windowHeight - rect.bottom;
-
-    let top = 0;
-    if (spaceBelow < estimatedMaxHeight && rect.top > estimatedMaxHeight) {
-      // 向上展开
-      const actualHeight = $dropdown.outerHeight() ?? 300;
-      top = rect.top + scrollTop - actualHeight - 4;
-    } else {
-      // 向下展开
-      top = rect.bottom + scrollTop + 4;
-    }
-
-    const left = Math.max(4, rect.left + scrollLeft);
-
-    $dropdown.css({
-      top: top + 'px',
-      left: left + 'px',
-      minWidth: Math.max(rect.width, 200) + 'px',
-    });
-
-    // 5. 自动聚焦搜索框
-    setTimeout(() => {
-      $searchInput.trigger('focus');
-      const $selectedItem = $optionsList.find('.selected');
-      if ($selectedItem.length) {
-        $optionsList.scrollTop($selectedItem[0].offsetTop - $optionsList.height()! / 2);
+      if (hasVisible) {
+        $noResults.hide();
+      } else {
+        $noResults.show();
       }
-    }, 10);
-  };
+    }, 200),
+  );
 
+  // 防止点击输入框导致 dropdown 关闭
+  $searchInput.on('mousedown click touchstart touchend', e => e.stopPropagation());
+
+  // 4. 定位计算
+  const rect = $select[0].getBoundingClientRect();
+  const scrollTop = $(window).scrollTop() || 0;
+  const scrollLeft = $(window).scrollLeft() || 0;
+  const windowHeight = $(window).height() || 0;
+
+  const estimatedMaxHeight = 350;
+  const spaceBelow = windowHeight - rect.bottom;
+
+  let top = 0;
+  if (spaceBelow < estimatedMaxHeight && rect.top > estimatedMaxHeight) {
+    // 向上展开
+    const actualHeight = $dropdown.outerHeight() ?? 300;
+    top = rect.top + scrollTop - actualHeight - 4;
+  } else {
+    // 向下展开
+    top = rect.bottom + scrollTop + 4;
+  }
+
+  const left = Math.max(4, rect.left + scrollLeft);
+
+  $dropdown.css({
+    top: top + 'px',
+    left: left + 'px',
+    minWidth: Math.max(rect.width, 200) + 'px',
+  });
+
+  // 5. 自动聚焦搜索框
+  setTimeout(() => {
+    $searchInput.trigger('focus');
+    const $selectedItem = $optionsList.find('.selected');
+    if ($selectedItem.length) {
+      $optionsList.scrollTop($selectedItem[0].offsetTop - $optionsList.height()! / 2);
+    }
+  }, 10);
+};
+
+const init = () => {
+  injectGlobalStyles();
   processSelects();
 
   const observer = new MutationObserver(mutations => {
@@ -278,9 +277,6 @@ const init = () => {
   });
 
   observer.observe(window.parent.document, { childList: true, subtree: true });
-
-  // 全局点击关闭
-  // 使用 document 而不是 window，兼容性更好
 };
 
 $(() => {
