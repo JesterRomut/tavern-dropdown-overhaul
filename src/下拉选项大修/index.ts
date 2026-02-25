@@ -7,7 +7,6 @@ const DROPDOWN_ID = 'k3rn-global-dropdown';
 const STYLE_ID = `k3rn-select-style`;
 const SCROLL_NAMESPACE = 'k3rn-scroll';
 
-// 新功能配置：触发显示搜索框的最小选项数量 (超过7个才显示)
 const SEARCH_THRESHOLD = 7; // 7是完美的数字哦 阿门
 
 // 1. 样式定义
@@ -163,8 +162,18 @@ const openDropdown = ($select: JQuery<HTMLElement>) => {
 
     $item.on('click', e => {
       e.stopPropagation();
-      $select.val($opt.val() ?? 'undefined');
+
+      const value = $opt.val() ?? 'undefined';
+
+      const nativeSelect = $select[0] as HTMLSelectElement; //这里采用native
+
+      nativeSelect.value = value.toString();
+
+      nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+      nativeSelect.dispatchEvent(new Event('input', { bubbles: true }));
       $select.trigger('change');
+      $opt.trigger('click');
+
       closeDropdown();
     });
     $item.on('mousedown touchstart touchend', e => e.stopPropagation());
