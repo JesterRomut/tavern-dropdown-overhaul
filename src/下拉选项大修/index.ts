@@ -1,7 +1,7 @@
 import { debounce } from 'lodash';
 
 /* eslint-disable better-tailwindcss/no-duplicate-classes */
-const REPLACED_MARKER = 'k3rn-replaced';
+//const REPLACED_MARKER = 'k3rn-replaced';
 const ACTIVE_CLASS = 'k3rn-trigger-active';
 const DROPDOWN_ID = 'k3rn-global-dropdown';
 const STYLE_ID = `k3rn-select-style`;
@@ -102,42 +102,6 @@ const closeDropdown = () => {
 };
 
 const isMobile = () => window.innerWidth <= 768;
-
-const processSelects = () => {
-  $('select')
-    .not(`[${REPLACED_MARKER}]`)
-    .each(function () {
-      const $select = $(this);
-      $select.attr(REPLACED_MARKER, 'true');
-
-      $select.on('mousedown', function (e) {
-        if (e.button !== 0) return;
-
-        e.preventDefault();
-        this.focus();
-
-        const isActive = $select.hasClass(ACTIVE_CLASS);
-
-        if (isActive) {
-          closeDropdown();
-          return;
-        }
-
-        closeDropdown();
-        openDropdown($select);
-      });
-
-      $select.on('keydown', function (e) {
-        if (e.key === ' ' || e.key === 'Enter') {
-          e.preventDefault();
-          e.stopPropagation();
-          const isActive = $select.hasClass(ACTIVE_CLASS);
-          closeDropdown();
-          if (!isActive) openDropdown($select);
-        }
-      });
-    });
-};
 
 const openDropdown = ($select: JQuery<HTMLElement>) => {
   $select.addClass(ACTIVE_CLASS);
@@ -275,18 +239,76 @@ const openDropdown = ($select: JQuery<HTMLElement>) => {
     if ($selectedItem.length) {
       $optionsList.scrollTop($selectedItem[0].offsetTop - $optionsList.height()! / 2);
     }
-  }, 10);
+  }, 2);
 };
 
+// const processSelects = () => {
+//   // 注意：如果脚本和DOM不在同一个window，请使用 $(window.parent.document).find(...)
+//   const $root = window.parent.document ? $(window.parent.document) : $(document);
+
+//   $root
+//     .find('select')
+//     .not(`[${REPLACED_MARKER}]`)
+//     .each(function () {
+//       const $select = $(this);
+//       $select.attr(REPLACED_MARKER, 'true');
+//       // 这里不再绑定 .on('mousedown')，交给全局委托处理
+//     });
+// };
+// 2. 新增一个处理触发逻辑的函数，用于事件委托
+const handleSelectTrigger = (e: JQuery.TriggeredEvent) => {
+  // 确保是左键
+  if (e.button !== 0) return;
+  const target = e.currentTarget as HTMLElement;
+  const $select = $(target);
+  // 阻止原生菜单弹出
+  e.preventDefault();
+  e.stopPropagation(); // 防止冒泡给其他可能触发原生UI的脚本
+
+  // 聚焦（为了保持键盘操作连贯性）
+  target.focus();
+  const isActive = $select.hasClass(ACTIVE_CLASS);
+  if (isActive) {
+    closeDropdown();
+    return;
+  }
+  closeDropdown();
+  openDropdown($select);
+};
+// 3. 修改 init 函数，使用事件委托
 const init = () => {
   injectGlobalStyles();
-  processSelects();
+  //processSelects();
+  // 获取正确的上下文文档
+  const targetDoc = window.parent.document || document;
+  // === 核心修改：事件委托 ===
+  // 监听 targetDoc 下所有 select 的 mousedown 事件
+  // 这样即使 select 被销毁重建，只要它还是 select，就会触发这个处理函数
+  $(targetDoc).on('mousedown', 'select', handleSelectTrigger);
 
-  const observer = new MutationObserver(mutations => {
-    if (mutations.some(mut => mut.addedNodes.length > 0)) processSelects();
+  // 额外防御：同时阻止 click 事件的默认行为，防止漏网之鱼
+  $(targetDoc).on('click', 'select', e => {
+    // 如果不是我们的自定义下拉，或者为了确保原生不弹出
+    e.preventDefault();
+    // 如果 mousedown 没触发（极少见），可以在这里补救，但通常只需 preventDefault
   });
-
-  observer.observe(window.parent.document, { childList: true, subtree: true });
+  // 键盘事件也可以委托
+  $(targetDoc).on('keydown', 'select', function (e) {
+    const $select = $(this);
+    if (e.key === ' ' || e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+      const isActive = $select.hasClass(ACTIVE_CLASS);
+      closeDropdown();
+      if (!isActive) openDropdown($select);
+    }
+  });
+  // const observer = new MutationObserver(mutations => {
+  //   // 即使使用了委托，我们可能仍需运行 processSelects 来打标记或做初始化处理
+  //   // 但不再依赖它来绑定事件，所以不会有“僵尸属性”导致事件丢失的问题
+  //   //if (mutations.some(mut => mut.addedNodes.length > 0)) processSelects();
+  // });
+  // observer.observe(targetDoc, { childList: true, subtree: true });
 };
 
 $(() => {
@@ -294,7 +316,7 @@ $(() => {
 
   window.parent.document.addEventListener('click', e => {
     if (!e.target) return;
-    if ((e.target as Element).hasAttribute(REPLACED_MARKER)) return;
+    if ((e.target as Element).closest('select')?.length ?? -1 > 0) return;
     closeDropdown();
   });
 });
