@@ -7,6 +7,9 @@ const DROPDOWN_ID = 'k3rn-global-dropdown';
 const STYLE_ID = `k3rn-select-style`;
 const SCROLL_NAMESPACE = 'k3rn-scroll';
 
+// 新功能配置：触发显示搜索框的最小选项数量 (超过7个才显示)
+const SEARCH_THRESHOLD = 7; // 7是完美的数字哦 阿门
+
 // 1. 样式定义
 const styles = `
   #${DROPDOWN_ID} {
@@ -90,16 +93,11 @@ const injectGlobalStyles = () => {
 };
 
 const closeDropdown = () => {
-  // 1. 先处理事件清理：找到当前激活的 select
   const $activeSelect = $(`.${ACTIVE_CLASS}`);
   if ($activeSelect.length) {
-    // 移除该 select 所有父级元素上的滚动监听，避免内存泄漏和不必要的触发
-    // add(window) 确保同时也移除了 window 上的监听
     $activeSelect.parents().add(document).off(`.${SCROLL_NAMESPACE}`);
     $activeSelect.removeClass(ACTIVE_CLASS);
   }
-
-  // 2. 移除 DOM
   $(`#${DROPDOWN_ID}`).remove();
 };
 
@@ -120,15 +118,12 @@ const processSelects = () => {
 
         const isActive = $select.hasClass(ACTIVE_CLASS);
 
-        // 如果已经打开，再次点击则是关闭
         if (isActive) {
           closeDropdown();
           return;
         }
 
-        // 关闭其他可能存在的下拉
         closeDropdown();
-
         openDropdown($select);
       });
 
@@ -147,84 +142,84 @@ const processSelects = () => {
 const openDropdown = ($select: JQuery<HTMLElement>) => {
   $select.addClass(ACTIVE_CLASS);
 
-  // 当父容器滚动时，下拉菜单位置会错位，因此需要关闭菜单
   const $parents = $select.parents().add(document);
   $parents.on(`scroll.${SCROLL_NAMESPACE}`, () => {
     closeDropdown();
   });
-  // ---------------------------
 
-  // 1. 构建基础结构
-  const $dropdown = $(`<div id="${DROPDOWN_ID}"></div>`);
-  const $searchWrapper = $(
-    `<div class="search-wrapper"><input type="text" class="search-input" placeholder="搜索…" /></div>`,
-  );
-  const $optionsList = $(`<div class="options-list"></div>`);
-  const $noResults = $(`<div class="no-results">无结果</div>`);
-
-  const $searchInput = $searchWrapper.find('input');
   const options = $select.find('option');
-
-  // 2. 构建选项列表 (使用 DocumentFragment 优化插入性能)
   const items: JQuery<HTMLElement>[] = [];
 
+  // 1. 先构建选项列表，以便准确计算有效选项的数量
   options.each((_: number, opt: HTMLElement) => {
     const $opt = $(opt);
     if ($opt.css('display') === 'none') return;
 
     const text = $opt.text();
     const isSelected = $opt.is(':selected');
-
     const $item = $(`<div class="option-item ${isSelected ? 'selected' : ''}">${text}</div>`);
 
-    // 性能关键：将搜索用的文本存入 data 属性
     $item.data('search-text', text.toLowerCase());
 
     $item.on('click', e => {
-      // 阻止冒泡，防止触发 document 点击关闭，但我们需要先处理逻辑再关闭
       e.stopPropagation();
       $select.val($opt.val() ?? 'undefined');
       $select.trigger('change');
       closeDropdown();
     });
-    // 防止在 item 上按下鼠标时触发 document 的关闭逻辑
     $item.on('mousedown touchstart touchend', e => e.stopPropagation());
 
     items.push($item);
   });
 
-  $optionsList.append(items);
-  $optionsList.append($noResults);
-  $dropdown.append($searchWrapper).append($optionsList);
-  $('body').append($dropdown);
+  // 2. 根据选项数量判断是否需要渲染搜索框
+  const search = items.length > SEARCH_THRESHOLD;
 
-  // 3. 搜索过滤逻辑
-  $searchInput.on(
-    'input',
-    debounce((e: any) => {
-      const val = e.target.value.toLowerCase().trim();
-      let hasVisible = false;
+  const $dropdown = $(`<div id="${DROPDOWN_ID}"></div>`);
+  const $optionsList = $(`<div class="options-list"></div>`);
+  const $noResults = $(`<div class="no-results">无结果</div>`);
 
-      items.forEach($item => {
-        const itemText = $item.data('search-text');
-        if (!val || itemText.includes(val)) {
-          $item.css('display', '');
-          hasVisible = true;
+  let $searchInput: JQuery<HTMLElement> | undefined;
+
+  // 3. 条件组装 DOM 结构
+  if (search) {
+    const $searchWrapper = $(
+      `<div class="search-wrapper"><input type="text" class="search-input" placeholder="搜索…" /></div>`,
+    );
+    $searchInput = $searchWrapper.find('input');
+
+    // 搜索过滤逻辑 (仅在有搜索框时绑定)
+    $searchInput.on(
+      'input',
+      debounce((e: any) => {
+        const val = e.target.value.toLowerCase().trim();
+        let somethingsHere = false;
+
+        items.forEach($item => {
+          const itemText = $item.data('search-text');
+          if (!val || itemText.includes(val)) {
+            $item.css('display', '');
+            somethingsHere = true;
+          } else {
+            $item.css('display', 'none');
+          }
+        });
+
+        if (somethingsHere) {
+          $noResults.hide();
         } else {
-          $item.css('display', 'none');
+          $noResults.show();
         }
-      });
+      }, 200),
+    );
 
-      if (hasVisible) {
-        $noResults.hide();
-      } else {
-        $noResults.show();
-      }
-    }, 200),
-  );
+    $searchInput.on('mousedown click touchstart touchend', e => e.stopPropagation());
+    $dropdown.append($searchWrapper);
+  }
 
-  // 防止点击输入框导致 dropdown 关闭
-  $searchInput.on('mousedown click touchstart touchend', e => e.stopPropagation());
+  $optionsList.append(items).append($noResults);
+  $dropdown.append($optionsList);
+  $('body').append($dropdown);
 
   // 4. 定位计算
   const rect = $select[0].getBoundingClientRect();
@@ -237,11 +232,9 @@ const openDropdown = ($select: JQuery<HTMLElement>) => {
 
   let top = 0;
   if (spaceBelow < estimatedMaxHeight && rect.top > estimatedMaxHeight) {
-    // 向上展开
     const actualHeight = $dropdown.outerHeight() ?? 300;
     top = rect.top + scrollTop - actualHeight - 4;
   } else {
-    // 向下展开
     top = rect.bottom + scrollTop + 4;
   }
 
@@ -253,10 +246,14 @@ const openDropdown = ($select: JQuery<HTMLElement>) => {
     minWidth: Math.max(rect.width, 200) + 'px',
   });
 
-  // 5. 自动聚焦搜索框 (移动端就不聚焦了)
-  if (isMobile()) return;
+  // 5. 自动聚焦与滚动定位
   setTimeout(() => {
-    $searchInput.trigger('focus');
+    // 只有在非移动端且启用了搜索框的情况下才去聚焦
+    if (!isMobile() && $searchInput) {
+      $searchInput.trigger('focus');
+    }
+
+    // 无论有没有搜索框，都保持滚动到选中项的逻辑
     const $selectedItem = $optionsList.find('.selected');
     if ($selectedItem.length) {
       $optionsList.scrollTop($selectedItem[0].offsetTop - $optionsList.height()! / 2);
@@ -269,14 +266,7 @@ const init = () => {
   processSelects();
 
   const observer = new MutationObserver(mutations => {
-    let needsProcess = false;
-    for (const mut of mutations) {
-      if (mut.addedNodes.length > 0) {
-        needsProcess = true;
-        break;
-      }
-    }
-    if (needsProcess) processSelects();
+    if (mutations.some(mut => mut.addedNodes.length > 0)) processSelects();
   });
 
   observer.observe(window.parent.document, { childList: true, subtree: true });
