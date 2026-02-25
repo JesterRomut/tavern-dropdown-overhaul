@@ -12,7 +12,8 @@ const SEARCH_THRESHOLD = 7; // 7是完美的数字哦 阿门
 // 1. 样式定义
 const styles = `
   #${DROPDOWN_ID} {
-      position: absolute;
+      margin: 0;
+      position: fixed;
       z-index: 99999;
       box-shadow: 0 4px 12px rgba(0,0,0,0.4);
       max-height: 400px;
@@ -228,7 +229,14 @@ const openDropdown = ($select: JQuery<HTMLElement>) => {
 
   $optionsList.append(items).append($noResults);
   $dropdown.append($optionsList);
-  $('body').append($dropdown);
+  //$('body').append($dropdown);
+
+  const $closestDialog = $select.closest('dialog');
+  if ($closestDialog.length) {
+    $closestDialog.append($dropdown);
+  } else {
+    $('body').append($dropdown);
+  }
 
   // 4. 定位计算
   const rect = $select[0].getBoundingClientRect();
