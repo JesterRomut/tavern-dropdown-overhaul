@@ -103,6 +103,8 @@ const closeDropdown = () => {
   $(`#${DROPDOWN_ID}`).remove();
 };
 
+const isMobile = () => window.innerWidth <= 768;
+
 const processSelects = () => {
   $('select')
     .not(`[${REPLACED_MARKER}]`)
@@ -251,7 +253,8 @@ const openDropdown = ($select: JQuery<HTMLElement>) => {
     minWidth: Math.max(rect.width, 200) + 'px',
   });
 
-  // 5. 自动聚焦搜索框
+  // 5. 自动聚焦搜索框 (移动端就不聚焦了)
+  if (isMobile()) return;
   setTimeout(() => {
     $searchInput.trigger('focus');
     const $selectedItem = $optionsList.find('.selected');
