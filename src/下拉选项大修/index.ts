@@ -337,5 +337,5 @@ const cleanup = () => {
   $(`.${ACTIVE_CLASS}`).removeClass(ACTIVE_CLASS);
 };
 
-$(() => init);
+$(init);
 $(window).on('pagehide', cleanup);
