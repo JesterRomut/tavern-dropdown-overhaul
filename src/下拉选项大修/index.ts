@@ -2,11 +2,11 @@ import { debounce } from 'lodash';
 
 /* eslint-disable better-tailwindcss/no-duplicate-classes */
 //const REPLACED_MARKER = 'k3rn-replaced';
-const ACTIVE_CLASS = 'k3rn-trigger-active';
-const DROPDOWN_ID = 'k3rn-global-dropdown';
-const STYLE_ID = `k3rn-select-style`;
-const EVENT_NAMESPACE = 'k3rn-event';
-const SCROLL_NAMESPACE = 'k3rn-scroll';
+const ACTIVE_CLASS = 'k3rn-dropdown-active';
+const DROPDOWN_ID = 'k3rn-dropdown-global';
+const STYLE_ID = `k3rn-dropdown-overhaul`;
+const EVENT_NAMESPACE = 'k3rn-dropdown-overhaul';
+const SCROLL_NAMESPACE = 'k3rn-dropdown-scroll';
 
 const SEARCH_THRESHOLD = 7; // 7是完美的数字哦 阿门
 
@@ -111,7 +111,7 @@ const closeDropdown = () => {
   $(`#${DROPDOWN_ID}`).remove();
 };
 
-const isMobile = () => window.innerWidth <= 768;
+const isMobile = () => Math.min(window.screen.width, window.outerWidth) <= 500;
 
 const openDropdown = ($select: JQuery<HTMLElement>) => {
   $select.addClass(ACTIVE_CLASS);
@@ -179,14 +179,14 @@ const openDropdown = ($select: JQuery<HTMLElement>) => {
   const $optionsList = $(`<div class="options-list"></div>`);
   const $noResults = $(`<div class="no-results">无结果</div>`);
 
-  let $searchInput: JQuery<HTMLElement> | undefined;
+  //let $searchInput: JQuery<HTMLElement> | undefined;
 
   // 3. 条件组装 DOM 结构
   if (search) {
     const $searchWrapper = $(
       `<div class="search-wrapper"><input type="text" class="search-input" placeholder="搜索…" /></div>`,
     );
-    $searchInput = $searchWrapper.find('input');
+    const $searchInput = $searchWrapper.find('input');
 
     // 搜索过滤逻辑 (仅在有搜索框时绑定)
     $searchInput.on(
@@ -225,6 +225,12 @@ const openDropdown = ($select: JQuery<HTMLElement>) => {
 
     $searchInput.on('mousedown click touchstart touchend', e => e.stopPropagation());
     $dropdown.append($searchWrapper);
+
+    setTimeout(() => {
+      if (isMobile()) return;
+      $searchInput[0].focus();
+      $searchInput.trigger('focus');
+    }, 6);
   }
 
   $optionsList.append(items).append($noResults);
@@ -263,19 +269,12 @@ const openDropdown = ($select: JQuery<HTMLElement>) => {
     minWidth: Math.max(rect.width, 200) + 'px',
   });
 
-  // 5. 自动聚焦与滚动定位
   setTimeout(() => {
-    // 只有在非移动端且启用了搜索框的情况下才去聚焦
-    if (!isMobile() && $searchInput) {
-      $searchInput.trigger('focus');
-    }
-
-    // 无论有没有搜索框，都保持滚动到选中项的逻辑
     const $selectedItem = $optionsList.find('.selected');
     if ($selectedItem.length) {
-      $optionsList.scrollTop($selectedItem[0].offsetTop - $optionsList.height()! / 2);
+      $optionsList.scrollTop($selectedItem[0].offsetTop - $optionsList.height()! / 2); //滚一滚
     }
-  }, 2);
+  }, 7); //依旧7是最完美的数字
 };
 
 const handleSelectTrigger = (e: JQuery.TriggeredEvent) => {
@@ -288,7 +287,7 @@ const handleSelectTrigger = (e: JQuery.TriggeredEvent) => {
   e.stopPropagation();
 
   // 聚焦（为了保持键盘操作连贯性）
-  target.focus();
+  //target.focus();
   const isActive = $select.hasClass(ACTIVE_CLASS);
   if (isActive) {
     closeDropdown();
@@ -297,6 +296,7 @@ const handleSelectTrigger = (e: JQuery.TriggeredEvent) => {
   closeDropdown();
   openDropdown($select);
 };
+
 // 使用事件委托
 const init = () => {
   injectGlobalStyles();
@@ -320,9 +320,9 @@ const init = () => {
     }
   });
 
-  window.parent.document.addEventListener(`click`, e => {
+  $(targetDoc).on(`click.${EVENT_NAMESPACE}`, e => {
     if (!e.target) return;
-    if ((e.target as Element).closest('select')?.length ?? -1 > 0) return;
+    if ((e.target as any).closest('select')?.length ?? -1 > 0) return;
     closeDropdown();
   });
 };
@@ -337,7 +337,5 @@ const cleanup = () => {
   $(`.${ACTIVE_CLASS}`).removeClass(ACTIVE_CLASS);
 };
 
-$(() => {
-  init();
-});
+$(() => init);
 $(window).on('pagehide', cleanup);
