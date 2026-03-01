@@ -1,106 +1,18 @@
 import { debounce } from 'lodash';
 
-/* eslint-disable better-tailwindcss/no-duplicate-classes */
+import { createScriptIdDiv, teleportStyle } from '@util/script';
+import {
+  ACTIVE_CLASS,
+  DROPDOWN_ID,
+  EVENT_NAMESPACE,
+  injectGlobalStyles,
+  SCROLL_NAMESPACE,
+  SEARCH_THRESHOLD,
+  STYLE_ID,
+} from './conf';
+import view from './conf_view.vue';
+
 //const REPLACED_MARKER = 'k3rn-replaced';
-const ACTIVE_CLASS = 'k3rn-dropdown-active';
-const DROPDOWN_ID = 'k3rn-dropdown-global';
-const STYLE_ID = `k3rn-dropdown-overhaul`;
-const EVENT_NAMESPACE = 'k3rn-dropdown-overhaul';
-const SCROLL_NAMESPACE = 'k3rn-dropdown-scroll';
-
-const SEARCH_THRESHOLD = 7; // 7是完美的数字哦 阿门
-
-const styles = `
-  #${DROPDOWN_ID} {
-      margin: 0;
-      position: fixed;
-      z-index: 99999;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-      max-height: 400px;
-      display: flex;
-      flex-direction: column;
-      background: var(--SmartThemeBlurTintColor, #1a1a1a);
-      color: var(--SmartThemeBodyColor, #eee);
-      border: 1px solid var(--SmartThemeBorderColor, #444);
-      border-radius: 4px;
-
-      overflow: hidden;
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-  }
-
-  #${DROPDOWN_ID} .search-wrapper {
-      padding: 8px;
-      background: rgba(0, 0, 0, 0.2);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      flex-shrink: 0;
-  }
-
-  #${DROPDOWN_ID} .search-input {
-      width: 100%;
-      padding: 6px 8px;
-      border-radius: 4px;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      background: rgba(0, 0, 0, 0.3);
-      color: inherit;
-      outline: none;
-      font-size: 0.9em;
-  }
-  #${DROPDOWN_ID} .search-input:focus {
-      border-color: var(--SmartThemeQuoteColor, #888);
-      background: rgba(0, 0, 0, 0.5);
-  }
-
-  #${DROPDOWN_ID} .options-list {
-      overflow-y: auto;
-      flex-grow: 1;
-      max-height: 300px;
-  }
-
-  #${DROPDOWN_ID} .options-list::-webkit-scrollbar {
-      width: 6px;
-  }
-  #${DROPDOWN_ID} .options-list::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.2);
-      border-radius: 3px;
-  }
-
-  #${DROPDOWN_ID} .option-item {
-      padding: 8px 12px;
-      cursor: pointer;
-      transition: background 0.1s;
-  }
-  #${DROPDOWN_ID} .option-item:hover {
-      background: rgba(128,128,128,0.1);
-  }
-  #${DROPDOWN_ID} .option-item.selected {
-      background: rgba(128,128,128,0.2);
-      font-weight: bold;
-      border-left: 3px solid var(--SmartThemeQuoteColor, #888);
-  }
-  #${DROPDOWN_ID} .no-results {
-      padding: 12px;
-      text-align: center;
-      color: var(--SmartThemeBodyColor, #eee);
-      font-style: italic;
-      display: none;
-  }
-  #${DROPDOWN_ID} .optgroup-header {
-      padding: 3px 12px;
-      font-size: 0.8em;
-      color: var(--SmartThemeQuoteColor, #888);
-      pointer-events: none;
-      background: rgba(128, 128, 128, 0.2);
-  }
-  #${DROPDOWN_ID} .option-item.grouped {
-      padding-left: 24px;
-  }
-`;
-
-const injectGlobalStyles = () => {
-  $(`#${STYLE_ID}`).remove();
-  $(`<style id="${STYLE_ID}">${styles}</style>`).appendTo('head');
-};
 
 const closeDropdown = () => {
   const $activeSelect = $(`.${ACTIVE_CLASS}`);
@@ -145,7 +57,7 @@ const openDropdown = ($select: JQuery<HTMLElement>) => {
       nativeSelect.value = value.toString();
       nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
       nativeSelect.dispatchEvent(new Event('input', { bubbles: true }));
-      $select.trigger('change');
+      //$select.trigger('change');
       $opt.trigger('click');
       closeDropdown();
     });
@@ -325,6 +237,8 @@ const init = () => {
     if ((e.target as any).closest('select')?.length ?? -1 > 0) return;
     closeDropdown();
   });
+
+  $(window).on('pagehide', cleanup);
 };
 
 const cleanup = () => {
@@ -338,4 +252,18 @@ const cleanup = () => {
 };
 
 $(init);
-$(window).on('pagehide', cleanup);
+
+$(() => {
+  const app = createApp(view).use(createPinia());
+
+  const $app = createScriptIdDiv().appendTo('#extensions_settings2');
+  app.mount($app[0]);
+
+  const { destroy } = teleportStyle();
+
+  $(window).on('pagehide', () => {
+    app.unmount();
+    $app.remove();
+    destroy();
+  });
+});
