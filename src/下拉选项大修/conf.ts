@@ -10,7 +10,7 @@ export const DEFAULT_STYLE = `
   #${DROPDOWN_ID} {
       margin: 0;
       position: fixed;
-      z-index: 99999;
+      z-index: 2147483648 !important;
       box-shadow: 0 4px 12px rgba(0,0,0,0.4);
       max-height: 400px;
       display: flex;
