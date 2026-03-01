@@ -113,6 +113,6 @@ export const useConfigStore = defineStore('settings', () => {
 export const injectGlobalStyles = () => {
   $(`#${STYLE_ID}`).remove();
   $(
-    `<style id="${STYLE_ID}">${Config.parse(getVariables({ type: 'script', script_id: getScriptId() })).style ?? ''}</style>`,
+    `<style id="${STYLE_ID}">${Config.parse(getVariables({ type: 'script', script_id: getScriptId() })).style ?? DEFAULT_STYLE}</style>`,
   ).appendTo('head');
 };

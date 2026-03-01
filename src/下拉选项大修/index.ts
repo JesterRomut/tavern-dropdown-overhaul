@@ -57,7 +57,7 @@ const openDropdown = ($select: JQuery<HTMLElement>) => {
       nativeSelect.value = value.toString();
       nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
       nativeSelect.dispatchEvent(new Event('input', { bubbles: true }));
-      $select.trigger('change');
+      //$select.trigger('change');
       $opt.trigger('click');
       closeDropdown();
     });

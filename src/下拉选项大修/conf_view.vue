@@ -1,27 +1,32 @@
 <template>
-  <div class="k3rn-dropdown-extension-settings">
-    <div class="inline-drawer">
-      <div class="inline-drawer-toggle inline-drawer-header">
-        <b>{{ `下拉选项大修` }}</b>
-        <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
-      </div>
-      <div class="inline-drawer-content">
-        <div class="k3rn-dropdown-extension_block flex-container">
-          <select>
-            <option>示例选项 - EXAMPLE</option>
-            <option>That is not dead</option>
-            <option>which can eternal lie,</option>
-            <option>And with strange aeons</option>
-            <option>even death may die.</option>
-          </select>
+  <div id="k3rn-dropdown_container" class="extension_container">
+    <div class="k3rn-dropdown-extension-setting">
+      <div class="inline-drawer">
+        <div class="inline-drawer-toggle inline-drawer-header">
+          <b>{{ `下拉选项大修` }}</b>
+          <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
         </div>
+        <div class="inline-drawer-content">
+          <div class="k3rn-dropdown-extension_block flex-container">
+            <select>
+              <option>示例选项 - EXAMPLE</option>
+              <option>That is not dead</option>
+              <option>which can eternal lie,</option>
+              <option>And with strange aeons</option>
+              <option>even death may die.</option>
+            </select>
+          </div>
 
-        <hr class="sysHR" />
+          <hr class="sysHR" />
 
-        <div class="k3rn-dropdown-extension_block flex-container">
-          <label for="example_setting">{{ `变量对应色表（随酒馆主题变动）` }}</label>
-          <div class="k3rn-color-grid">
-            <!--
+          <div class="k3rn-dropdown-extension_block flex-container">
+            <h3>{{ `样式修改 (DIY)` }}</h3>
+          </div>
+
+          <div class="k3rn-dropdown-extension_block flex-container">
+            <label for="k3rn-dropdown-extension-setting">{{ `变量对应色表（随酒馆主题变动）` }}</label>
+            <div class="k3rn-color-grid">
+              <!--
             --SmartThemeEmColor: rgba(150, 150, 150, 1);
     --SmartThemeUnderlineColor: rgba(79, 154, 255, 0.9);
     --SmartThemeQuoteColor: rgba(89, 146, 221, 1);
@@ -32,38 +37,39 @@
     --SmartThemeShadowColor: rgba(32, 33, 36, 1);
     --SmartThemeBorderColor: rgba(32, 33, 36, 1);
             -->
-            <div>--SmartThemeBodyColor</div>
-            <div></div>
-            <div>--SmartThemeEmColor</div>
-            <div></div>
-            <div>--SmartThemeUnderlineColor</div>
-            <div></div>
-            <div>--SmartThemeQuoteColor</div>
-            <div></div>
-            <div>--SmartThemeBlurTintColor</div>
-            <div></div>
-            <div>--SmartThemeChatTintColor</div>
-            <div></div>
-            <div>--SmartThemeUserMesBlurTintColor</div>
-            <div></div>
-            <div>--SmartThemeBotMesBlurTintColor</div>
-            <div></div>
-            <div>--SmartThemeShadowColor</div>
-            <div></div>
-            <div>--SmartThemeBorderColor</div>
-            <div></div>
+              <div>--SmartThemeBodyColor</div>
+              <div></div>
+              <div>--SmartThemeEmColor</div>
+              <div></div>
+              <div>--SmartThemeUnderlineColor</div>
+              <div></div>
+              <div>--SmartThemeQuoteColor</div>
+              <div></div>
+              <div>--SmartThemeBlurTintColor</div>
+              <div></div>
+              <div>--SmartThemeChatTintColor</div>
+              <div></div>
+              <div>--SmartThemeUserMesBlurTintColor</div>
+              <div></div>
+              <div>--SmartThemeBotMesBlurTintColor</div>
+              <div></div>
+              <div>--SmartThemeShadowColor</div>
+              <div></div>
+              <div>--SmartThemeBorderColor</div>
+              <div></div>
+            </div>
           </div>
-        </div>
 
-        <div class="k3rn-dropdown-extension_block flex-container">
-          <input class="menu_button" type="submit" :value="`恢复默认`" @click="fillOverrideWithDefaults" />
-        </div>
+          <div class="k3rn-dropdown-extension_block flex-container">
+            <textarea v-model="settings.style" :placeholder="DEFAULT_STYLE"></textarea>
+          </div>
 
-        <div class="k3rn-dropdown-extension_block flex-container">
-          <textarea v-model="settings.style" :placeholder="DEFAULT_STYLE"></textarea>
-        </div>
+          <div class="k3rn-dropdown-extension_block flex-container">
+            <input class="menu_button" type="submit" :value="`恢复默认`" @click="fillOverrideWithDefaults" />
+          </div>
 
-        <hr class="sysHR" />
+          <hr class="sysHR" />
+        </div>
       </div>
     </div>
   </div>
