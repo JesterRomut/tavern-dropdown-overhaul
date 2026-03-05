@@ -150,11 +150,11 @@ const openDropdown = ($select: JQuery<HTMLElement>) => {
   //$('body').append($dropdown);
 
   const $dialog = $select.closest('dialog');
-  if ($dialog.length) {
-    $dialog.append($dropdown);
-  } else {
-    $('body').append($dropdown);
-  }
+  // if ($dialog.length) {
+  //   $dialog.append($dropdown);
+  // } else {
+  //   $('body').append($dropdown);
+  // }
 
   //const $dialog = $select.closest('dialog');
   // 提前计算视口相关属性（判断向上还是向下弹出）
