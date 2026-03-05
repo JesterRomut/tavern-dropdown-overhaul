@@ -156,24 +156,47 @@ const openDropdown = ($select: JQuery<HTMLElement>) => {
     $('body').append($dropdown);
   }
 
-  // 4. 定位计算
+  //const $dialog = $select.closest('dialog');
+  // 提前计算视口相关属性（判断向上还是向下弹出）
   const rect = $select[0].getBoundingClientRect();
-  const scrollTop = $(window).scrollTop() || 0;
-  const scrollLeft = $(window).scrollLeft() || 0;
   const windowHeight = $(window).height() || 0;
-
   const estimatedMaxHeight = 350;
   const spaceBelow = windowHeight - rect.bottom;
-
   let top = 0;
-  if (spaceBelow < estimatedMaxHeight && rect.top > estimatedMaxHeight) {
-    const actualHeight = $dropdown.outerHeight() ?? 300;
-    top = rect.top + scrollTop - actualHeight - 4;
-  } else {
-    top = rect.bottom + scrollTop + 4;
-  }
+  let left = 0;
+  // 4. 定位计算修复
+  if ($dialog.length) {
+    // 场景 A：在 Dialog 内部
+    $dialog.append($dropdown);
 
-  const left = Math.max(4, rect.left + scrollLeft);
+    // 必须要 append 之后才能获取真实的 outerHeight
+    const actualHeight = $dropdown.outerHeight() ?? 300;
+    const dialogRect = $dialog[0].getBoundingClientRect();
+    const dialogScrollTop = $dialog.scrollTop() || 0;
+    const dialogScrollLeft = $dialog.scrollLeft() || 0;
+    // 计算 Select 相对于 Dialog 左上角的坐标
+    const baseTop = rect.top - dialogRect.top + dialogScrollTop;
+    const baseLeft = rect.left - dialogRect.left + dialogScrollLeft;
+    if (spaceBelow < estimatedMaxHeight && rect.top > estimatedMaxHeight) {
+      top = baseTop - actualHeight - 4; // 向上弹出
+    } else {
+      top = baseTop + rect.height + 4; // 向下弹出
+    }
+    left = Math.max(4, baseLeft);
+  } else {
+    // 场景 B：在普通的 Body 内部
+    $('body').append($dropdown);
+
+    const actualHeight = $dropdown.outerHeight() ?? 300;
+    const scrollTop = $(window).scrollTop() || 0;
+    const scrollLeft = $(window).scrollLeft() || 0;
+    if (spaceBelow < estimatedMaxHeight && rect.top > estimatedMaxHeight) {
+      top = rect.top + scrollTop - actualHeight - 4; // 向上弹出
+    } else {
+      top = rect.bottom + scrollTop + 4; // 向下弹出
+    }
+    left = Math.max(4, rect.left + scrollLeft);
+  }
 
   $dropdown.css({
     top: top + 'px',
