@@ -9,7 +9,7 @@ export const SEARCH_THRESHOLD = 7; // 7是完美的数字哦 阿门
 export const DEFAULT_STYLE = `
 #${DROPDOWN_ID} {
     margin: 0;
-    position: fixed;
+    position: absolute;
     z-index: 2147483648 !important;
     box-shadow: 0 4px 12px rgba(0,0,0,0.4);
     max-height: 400px;

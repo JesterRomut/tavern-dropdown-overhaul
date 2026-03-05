@@ -236,15 +236,15 @@ const handleSelectTrigger = (e: JQuery.TriggeredEvent) => {
 const init = () => {
   injectGlobalStyles();
   const targetDoc = window.parent.document || document;
-  $(targetDoc).on(`mousedown.${EVENT_NAMESPACE}`, 'select', handleSelectTrigger);
+  $(targetDoc).on(`mousedown.${EVENT_NAMESPACE}`, 'select:not([multiple])', handleSelectTrigger);
 
-  $(targetDoc).on(`click.${EVENT_NAMESPACE}`, 'select', e => {
+  $(targetDoc).on(`click.${EVENT_NAMESPACE}`, 'select:not([multiple])', e => {
     e.preventDefault();
     // 如果 mousedown 没触发（极少见），可以在这里补救，但通常只需 preventDefault
   });
 
   // 键盘事件也可以委托
-  $(targetDoc).on(`keydown.${EVENT_NAMESPACE}`, 'select', function (e) {
+  $(targetDoc).on(`keydown.${EVENT_NAMESPACE}`, 'select:not([multiple])', function (e) {
     const $select = $(this);
     if (e.key === ' ' || e.key === 'Enter') {
       e.preventDefault();
