@@ -15,7 +15,8 @@
       有点毁童年，不过都是卡了，你们想写什么故事就写什么故事吧，包括让大门大往三个女主脸上一人一拳解气啥的我都没意见……
     </p>
     <section>
-      <p>可选小功能：让user扮演四位主角之一，扮演时对应提示词位于user定义，世界书不发送</p>
+      <h3>可选小功能</h3>
+      <p>让user扮演四位主角之一，扮演时对应提示词位于user定义，世界书不发送。甚至可以扮演主角去跟其它的卡聊。</p>
 
       <div class="segmented">
         <label v-for="(chr, key) in chrs" :key="chr.realName" class="segmented-button" :for="key"
@@ -37,7 +38,7 @@
       <p v-if="currentChr === `ali`">可以在此之后追加更多设定。</p>
     </section>
     <section>
-      开场一览
+      <h3>开场一览</h3>
       <ol>
         <li v-for="msg in starts" :key="msg">{{ msg }}</li>
       </ol>
@@ -76,11 +77,11 @@ const starts = [
   'user遭遇独自回到人类世界的小津',
   'user遭遇独自回到人类世界的美园',
   'user是被选召孩子，刚收到消息就被神代把手机打爆了',
-  'user是被选召孩子，和其他孩子(自定)一起在数码园区领取搭档',
-  'user是孩子，和小津一起(并不)卖命想回人类世界',
-  'user在亚文化cosplay专场里发现了神代、小津、美园',
+  'user是被选召孩子，和其他孩子(自定)一起在数码园区领取搭档(自定)',
+  'user是被选召孩子，但和小津一样为了回到人类世界而卖命',
   '神代、小津、美园捡到了苏醒过来的的user前辈',
   '御神乐米蕾把神代、小津、美园交给了user',
+  'user在亚文化cosplay专场里发现了神代、小津、美园',
   'user严肃收看DF却误看了DigimonFables',
   '神代和太一、拓也及user一起踢球',
 ];
@@ -150,6 +151,10 @@ a:hover {
 ol {
   list-style-type: lower-roman;
   padding-left: 1.5em;
+}
+
+h3 {
+  font-weight: bold;
 }
 
 main > p {
