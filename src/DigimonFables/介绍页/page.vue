@@ -39,7 +39,7 @@
     <section>
       开场一览
       <ul>
-        <li>小红帽寻思自己是神代工并和太一、拓也及user一起踢球</li>
+        <li v-for="msg in starts" :key="msg">{{ msg }}</li>
       </ul>
     </section>
 
@@ -70,6 +70,10 @@ const chrs = {
   rapu: { realName: '美园罗浮太', called: '蕾潘泽' },
   ali: { realName: '第四人', called: '任意名字' },
 };
+
+const starts = [
+  "小红帽寻思自己是神代工并和太一、拓也及user一起踢球"
+]
 
 function getCurrentChr(): (typeof chrs)[keyof typeof chrs] {
   return chrs[currentChr.value as keyof typeof chrs];
