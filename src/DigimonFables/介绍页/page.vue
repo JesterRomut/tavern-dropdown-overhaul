@@ -38,12 +38,10 @@
     </section>
     <section>
       开场一览
-      <ul>
+      <ol>
         <li v-for="msg in starts" :key="msg">{{ msg }}</li>
-      </ul>
+      </ol>
     </section>
-
-    <p>另外，这段话不会发送给AI。可以当作空白开场使用。</p>
     <p>
       <b>需要提示词模板/ejs语法/Prompt Template</b>
       <br />
@@ -72,8 +70,20 @@ const chrs = {
 };
 
 const starts = [
-  "小红帽寻思自己是神代工并和太一、拓也及user一起踢球"
-]
+  '（空白/此介绍页不会发送给AI）',
+  '小漫画剧情，神代找队友发现已成盒',
+  'user遭遇独自回到人类世界的神代',
+  'user遭遇独自回到人类世界的小津',
+  'user遭遇独自回到人类世界的美园',
+  'user是被选召孩子，刚收到消息就被神代把手机打爆了',
+  'user是被选召孩子，和其他孩子(自定)一起在数码园区领取搭档',
+  'user是孩子，和小津一起(并不)卖命想回人类世界',
+  'user在亚文化cosplay专场里发现了神代、小津、美园',
+  '神代、小津、美园捡到了苏醒过来的的user前辈',
+  '御神乐米蕾把神代、小津、美园交给了user',
+  'user严肃收看DF却误看了DigimonFables',
+  '神代和太一、拓也及user一起踢球',
+];
 
 function getCurrentChr(): (typeof chrs)[keyof typeof chrs] {
   return chrs[currentChr.value as keyof typeof chrs];
@@ -135,6 +145,11 @@ a {
 
 a:hover {
   color: coral;
+}
+
+ol {
+  list-style-type: lower-roman;
+  padding-left: 1.5em;
 }
 
 main > p {
