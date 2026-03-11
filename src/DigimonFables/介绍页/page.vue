@@ -29,13 +29,20 @@
         >或<a>{{ getCurrentChr().called }}</a> - 链接本世界书 - 复制以下内容进用户设定描述：
       </p>
 
-      <code
+      <!-- <code
         >{{ `\{\{` }}outlet::chr_{{ currentChr }}{{ `\}\}` }}{{ `\{\{` }}setvar::{{ currentChr }}_user::true{{
           `\}\}`
         }}</code
-      >
+      > -->
 
-      <p v-if="currentChr === `ali`">可以在此之后追加更多设定。</p>
+      <div v-if="currentChr === `ali`">
+        <code>详见`角色档案：第四人 / 被遗忘者`。</code>
+        <p>可以在此之后追加更多设定。</p>
+      </div>
+      <div v-else>
+        <code>详见`角色档案：{{ getCurrentChr().called }} / {{ getCurrentChr().realName }}`</code>
+      </div>
+      <p>（至于现在删掉了outlet和ejs为什么还留着这个……其实只是懒得改介绍页代码了）</p>
     </section>
     <section>
       <h3>开场一览</h3>
@@ -71,7 +78,7 @@ const chrs = {
 };
 
 const starts = [
-  '（空白/此介绍页不会发送给AI）',
+  '（自定义开局/此介绍页不会发送给AI）',
   '小漫画剧情，神代找队友发现已成盒',
   'user遭遇独自回到人类世界的神代',
   'user遭遇独自回到人类世界的小津',
@@ -84,6 +91,7 @@ const starts = [
   'user在亚文化cosplay专场里发现了神代、小津、美园',
   'user严肃收看DF却误看了DigimonFables',
   '神代和太一、拓也及user一起踢球',
+  '大门大/秋山辽user机械降神开局',
 ];
 
 function getCurrentChr(): (typeof chrs)[keyof typeof chrs] {
@@ -97,14 +105,14 @@ const currentChr = ref('kou');
 @import url('data:text/css,%40font-face%7Bfont-family%3A%22ZSFT-685%22%3Bsrc%3Aurl(%22https%3A%2F%2Ffontsapi.zeoseven.com%2F685%2Fmain.woff2%22)%20format(%22woff2%22)%3Bfont-style%3Anormal%3Bfont-weight%3A400%3Bfont-display%3Aswap%3B%7D');
 @import url('data:text/css,%40font-face%7Bfont-family%3A%22ZSFT-651%22%3Bsrc%3Aurl(%22https%3A%2F%2Ffontsapi.zeoseven.com%2F651%2Fitalic.woff2%22)%20format(%22woff2%22)%3Bfont-style%3Aitalic%3Bfont-weight%3A100%20900%3Bfont-display%3Aswap%3B%7D%40font-face%7Bfont-family%3A%22ZSFT-651%22%3Bsrc%3Aurl(%22https%3A%2F%2Ffontsapi.zeoseven.com%2F651%2Fmain.woff2%22)%20format(%22woff2%22)%3Bfont-style%3Anormal%3Bfont-weight%3A100%20900%3Bfont-display%3Aswap%3B%7D');
 
-@media screen and (max-width: 1000px) {
+@media screen and (max-width: 600px) {
   :root {
     --main-padding: 0.5em;
     --section-padding: 0.5em;
   }
 }
 
-@media screen and (min-width: 1000px) {
+@media screen and (min-width: 600px) {
   :root {
     --main-padding: 1.5em;
     --section-padding: 1em;
@@ -178,7 +186,7 @@ main > footer h2 {
   text-transform: uppercase;
 }
 
-@media screen and (max-width: 1000px) {
+@media screen and (max-width: 600px) {
   .segmented {
     padding: 0.5em 0;
     display: flex;
@@ -219,7 +227,7 @@ main > footer h2 {
   }
 }
 /** https://freefrontend.com/css-radio-buttons/ */
-@media screen and (min-width: 1000px) {
+@media screen and (min-width: 600px) {
   .segmented {
     --padding: 0.2rem;
     display: flex;
