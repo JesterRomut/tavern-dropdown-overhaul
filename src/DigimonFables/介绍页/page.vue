@@ -40,7 +40,7 @@
         <p>可以在此之后追加更多设定。</p>
       </div>
       <div v-else>
-        <code>详见`角色档案：{{ getCurrentChr().called }} / {{ getCurrentChr().realName }}`</code>
+        <code>详见`角色档案：{{ getCurrentChr().called }} / {{ getCurrentChr().realName }}`。</code>
       </div>
       <p>（至于现在删掉了outlet和ejs为什么还留着这个……其实只是懒得改介绍页代码了）</p>
     </section>
@@ -157,7 +157,7 @@ a:hover {
 }
 
 ol {
-  list-style-type: lower-roman;
+  list-style-type: decimal;
   padding-left: 1.5em;
 }
 
