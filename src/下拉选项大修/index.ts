@@ -236,6 +236,8 @@ const handleSelectTrigger = (e: JQuery.TriggeredEvent) => {
 const init = () => {
   injectGlobalStyles();
   const targetDoc = window.parent.document || document;
+
+  //不是这部分代码干的
   $(targetDoc).on(`mousedown.${EVENT_NAMESPACE}`, 'select:not([multiple])', handleSelectTrigger);
 
   $(targetDoc).on(`click.${EVENT_NAMESPACE}`, 'select:not([multiple])', e => {
@@ -256,27 +258,17 @@ const init = () => {
   });
 
   $(targetDoc).on(`click.${EVENT_NAMESPACE}`, e => {
-    if (!e.target) return;
-    if ((e.target as any).closest('select')?.length ?? -1 > 0) return;
-    closeDropdown();
+    if (e.target && ((e.target as any).closest('select')?.length ?? -1 > 0)) closeDropdown();
   });
 
-  $(window).on('pagehide', cleanup);
-};
+  $(window).on('pagehide', () => {
+    closeDropdown();
+    $(`#${STYLE_ID}`).remove();
+    $(targetDoc).off(`.${EVENT_NAMESPACE}`);
 
-const cleanup = () => {
-  const doc = window.parent.document || document;
+    $(`.${ACTIVE_CLASS}`).removeClass(ACTIVE_CLASS);
+  });
 
-  closeDropdown();
-  $(`#${STYLE_ID}`).remove();
-  $(doc).off(`.${EVENT_NAMESPACE}`);
-
-  $(`.${ACTIVE_CLASS}`).removeClass(ACTIVE_CLASS);
-};
-
-$(init);
-
-$(() => {
   const app = createApp(view).use(createPinia());
 
   const $app = createScriptIdDiv().appendTo('#extensions_settings2');
@@ -289,4 +281,6 @@ $(() => {
     $app.remove();
     destroy();
   });
-});
+};
+
+$(init);

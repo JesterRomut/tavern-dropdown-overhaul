@@ -16,7 +16,7 @@
     </p>
     <section>
       <h3>可选小功能</h3>
-      <p>让user扮演四位主角之一，扮演时对应提示词位于user定义，世界书不发送。甚至可以扮演主角去跟其它的卡聊。</p>
+      <p>让user扮演四位主角之一，<s>扮演时对应提示词位于user定义，世界书不发送</s>。甚至可以扮演主角去跟其它的卡聊。</p>
 
       <div class="segmented">
         <label v-for="(chr, key) in chrs" :key="chr.realName" class="segmented-button" :for="key"
@@ -51,12 +51,10 @@
       </ol>
     </section>
     <p>
-      <b>需要提示词模板/ejs语法/Prompt Template</b>
-      <br />
       <b>卡图自绘，不可以喂ai，不可以图生图/图生视频</b>
     </p>
     <p>
-      非自用的二改需授权，二传需标明作者及原帖
+      非自用的二改（任何修改）都需授权。二传需标明作者及原帖
       <br />
       商业化禁止
     </p>
@@ -79,10 +77,12 @@ const chrs = {
 
 const starts = [
   '（自定义开局/此介绍页不会发送给AI）',
-  '小漫画剧情，神代找队友发现已成盒',
   'user遭遇独自回到人类世界的神代',
   'user遭遇独自回到人类世界的小津',
   'user遭遇独自回到人类世界的美园',
+  'user在监控看见神代工偷钢卷',
+  'user和星际玩家小津面基',
+  'user冲浪误入美园拼高达直播间',
   'user是被选召孩子，刚收到消息就被神代把手机打爆了',
   'user是被选召孩子，和其他孩子(自定)一起在数码园区领取搭档(自定)',
   'user是被选召孩子，但和小津一样为了回到人类世界而卖命',
@@ -92,6 +92,8 @@ const starts = [
   'user严肃收看DF却误看了DigimonFables',
   '神代和太一、拓也及user一起踢球',
   '大门大/秋山辽user机械降神开局',
+  '小漫画剧情，神代找队友发现已成盒',
+  '为主角团选择你要穿越的世界（极简）',
 ];
 
 function getCurrentChr(): (typeof chrs)[keyof typeof chrs] {
