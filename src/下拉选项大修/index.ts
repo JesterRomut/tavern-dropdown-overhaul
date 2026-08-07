@@ -258,7 +258,8 @@ const init = () => {
   });
 
   $(targetDoc).on(`click.${EVENT_NAMESPACE}`, e => {
-    if (e.target && ((e.target as any).closest('select')?.length ?? -1 > 0)) closeDropdown();
+    //console.log((e.target as any).closest('select')?.length);
+    if ((e.target as any).closest('select')?.length === undefined) closeDropdown();
   });
 
   $(window).on('pagehide', () => {
