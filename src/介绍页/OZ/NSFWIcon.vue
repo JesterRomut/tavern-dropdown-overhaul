@@ -24,7 +24,6 @@
 </template>
 <style scoped>
 svg {
-  display: inline;
   fill: currentColor;
 }
 </style>

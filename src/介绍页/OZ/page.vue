@@ -1,55 +1,11 @@
 <script setup lang="ts">
 import NSFWIcon from './NSFWIcon.vue';
+import { starts } from './starts';
 import { changeGreeting } from './util';
-
-// async function changeGreeting(swipe_id: number) {
-//   try {
-//     // 优先调用酒馆助手API，无缝刷新至0号开场白
-//     if (typeof setChatMessages === 'function') {
-//       await setChatMessages([{ message_id: 0, swipe_id }], { refresh: 'all' });
-//     } else {
-//       throw new Error('STHelper API not found.');
-//     }
-//   } catch (error) {
-//     // 降级方案：执行STscript斜杠命令模拟切换
-//     console.warn('UI交互降级: 使用triggerSlash返回开场白');
-//     if (typeof triggerSlash === 'function') {
-//       triggerSlash('/swipe 0 0');
-//     }
-//   }
-// }
-
-type Start = { id: number; name: string; tags: Set<string> };
-function start(id: number, name: string, tags: Array<string> = []): Start {
-  return { id, name, tags: new Set(tags) };
-}
-function NSFWstart(id: number, name: string, tags: Array<string> = []) {
-  return start(id, name, ['NSFW', ...tags]);
-}
-const starts: Start[] = [
-  // start(1, '（自定义开局/此介绍页不会发送给AI）'),
-  start(1, 'user和OZ争抢半价便当', ['偶遇']),
-  start(2, 'user要求OZ脑控自己并讨论方案', ['雇佣']),
-  start(3, 'OZ来user家面试挖掘失传媒体的工作', ['雇佣']),
-  start(4, 'user在图书馆发现了看书的OZ', ['偶遇']),
-  start(5, 'user在实验室旧址拍到了隐身的OZ', ['偶遇']),
-  start(6, 'user在野外徒步雇OZ当摄影师', ['雇佣']),
-  start(7, 'user看见OZ被雨打湿衣服透出的高危精神病纹身', ['偶遇']),
-  start(8, 'OZ发现自己的名字在21世纪已沦为无限膨胀的论战单位'),
-  start(9, 'OZ在21世纪不会扫码支付，不得不求助user', ['求助']),
-  start(10, 'user是警察接到OZ的报案', ['求助']),
-  start(11, 'user和OZ出身同一实验室，正在叫OZ起床', ['旧识']),
-  start(12, 'OZ读出身同一实验室的user的心，读到非常可怕的成人内容被破防', ['旧识', '雇佣']),
-  NSFWstart(13, '爱爱时OZ掀开衣服露出小腹上的纹身，本以为是魅魔淫纹，没想到是……'),
-  NSFWstart(14, 'OZ脑控user操自己泄欲'),
-  NSFWstart(15, 'OZ被user脑子里的成人内容破防（这次真的是黄色废料了确信）'),
-  NSFWstart(16, 'OZ看本子看流鼻血被抓包，嘴硬说是超能力用多了'),
-];
 
 const searchQuery = ref('');
 // 0: 未选中, 1: 包含, -1: 排除
-const tagStates = ref<Record<string, number>>({});
-
+const tagStates = ref<Record<string, number>>(loadTagStates());
 const allTags = computed(() => {
   let tags = new Set<string>();
   starts.forEach(s => {
@@ -57,8 +13,7 @@ const allTags = computed(() => {
   });
   return [...tags].reverse();
 });
-
-// 初始化标签状态
+// 【修改】合并新标签：保留已加载的持久化状态，只为未记录的新 tag 初始化为 0
 watch(
   allTags,
   tags => {
@@ -70,14 +25,27 @@ watch(
   },
   { immediate: true },
 );
+watch(
+  tagStates,
+  async newState => {
+    // 使用 toRaw 解除 Vue 的 Proxy 响应式代理
+    const rawState = toRaw(newState);
 
-const toggleTag = (tag: string) => {
-  const current = tagStates.value[tag] || 0;
-  if (current === 0)
-    tagStates.value[tag] = 1; // 未选 -> 包含
-  else if (current === 1)
-    tagStates.value[tag] = -1; // 包含 -> 排除
-  else tagStates.value[tag] = 0; // 排除 -> 未选
+    // 过滤掉值为 0 的项，只保留 1 和 -1
+    const stateToSave = Object.fromEntries(Object.entries(rawState).filter(([_, value]) => value !== 0));
+
+    // 传入纯净且已过滤的普通对象进行保存
+    await saveTagStates(stateToSave);
+  },
+  { deep: true }, // 必须开启 deep，因为我们修改的是对象内部的属性
+);
+
+const toggleInclude = (tag: string) => {
+  tagStates.value[tag] = tagStates.value[tag] === 1 ? 0 : 1;
+};
+// 切换“排除(-1)”和“未选(0)”的双态
+const toggleExclude = (tag: string) => {
+  tagStates.value[tag] = tagStates.value[tag] === -1 ? 0 : -1;
 };
 
 const filteredStarts = computed(() => {
@@ -96,6 +64,18 @@ const filteredStarts = computed(() => {
     return matchName && matchRequired && matchExcluded;
   });
 });
+
+// --- 持久化辅助函数 ---
+function loadTagStates(): Record<string, number> {
+  const variables = getVariables({ type: 'global' });
+  // 【修正】将检查的 key 从 'OZ.Tag搜索' 改为 'OZ.TagStates' 保持一致
+  return { ..._.get(variables, 'OZ.TagStates', {}) };
+}
+async function saveTagStates(option: Record<string, number>) {
+  const variables = getVariables({ type: 'global' });
+  _.set(variables, 'OZ.TagStates', option);
+  await replaceVariables(variables, { type: 'global' });
+}
 </script>
 
 <template>
@@ -103,36 +83,44 @@ const filteredStarts = computed(() => {
     <p>作者@Kernschmelze。OZ，欧几里得。</p>
     <p>“大家早就不需要超能力者了。有了计算机和互联网，谁还需要被折弯的勺子和被撬开的锁呢？”</p>
     <section>
-      <h3><i class="fa-solid fa-eye"></i> 开场一览</h3>
+      <h3><i class="fa-solid fa-hamsa"></i> 开场一览</h3>
       <div class="search-bar">
         <input v-model="searchQuery" type="text" placeholder="搜索开场..." />
       </div>
 
       <div class="tags-container">
-        <button
+        <div
           v-for="tag in allTags"
           :key="tag"
+          class="tag-item"
           :class="[{ 'is-included': tagStates[tag] === 1, 'is-excluded': tagStates[tag] === -1 }]"
-          @click="toggleTag(tag)"
         >
-          <!-- <span v-if="tagStates[tag] === 1" class="tag-icon">+</span> -->
-          <i v-if="tagStates[tag] === 1" class="fa-solid fa-circle-check"></i>
-          <!-- <span v-else-if="tagStates[tag] === -1" class="tag-icon">-</span> -->
-          <i v-else-if="tagStates[tag] === -1" class="fa-solid fa-circle-xmark"></i>
-          {{ tag }}
-        </button>
+          <!-- 左侧：点击切换包含状态 -->
+          <div class="tag-main" @click="toggleInclude(tag)">
+            <i v-if="tagStates[tag] === 1" class="fa-solid fa-circle-check"></i>
+            <i v-else-if="tagStates[tag] === -1" class="fa-solid fa-circle-xmark"></i>
+            <span>{{ tag }}</span>
+          </div>
+          <!-- 右侧：减号，点击切换排除状态 -->
+          <div class="tag-exclude-btn" title="排除此标签" @click.stop="toggleExclude(tag)">
+            <i class="fa-solid fa-minus"></i>
+          </div>
+        </div>
       </div>
 
       <ul>
         <li><span>1</span>（自定义开局/本介绍页不会发送给AI）</li>
         <li v-for="s in filteredStarts" :key="s.id" aria-label="button" @click="changeGreeting(s.id)">
-          <span>{{ s.id + 1 }}</span> <i v-if="s.tags.has('NSFW')"> <NSFWIcon /></i>{{ s.name }}
+          <span>{{ s.id + 1 }}</span
+          ><i v-if="s.tags.has('NSFW')"><NSFWIcon /></i> {{ s.name }}
           <!-- <span v-if="s.tags.length > 0" class="tag-list">
             <span v-for="tag in s.tags" :key="tag" class="tag-badge">[{{ tag }}]</span>
           </span> -->
         </li>
 
-        <li v-if="filteredStarts.length === 0" style="color: #888"><i>月球的背面空荡荡...</i></li>
+        <li v-if="filteredStarts.length === 0" class="empty-moon">
+          月球的背面空荡荡...<i class="fa-regular fa-moon"></i>
+        </li>
       </ul>
     </section>
     <p>
@@ -160,16 +148,17 @@ const filteredStarts = computed(() => {
 /* 搜索栏样式 */
 .search-bar {
   display: flex;
-  margin: 1em 0 0.5em 0;
+  margin: 1rem 0 0.5rem 0;
   input {
     background: rgba(0, 0, 0, 0.5);
     border: 1px solid #484a4c;
     color: aliceblue;
-    padding: 0.4em 0.8em;
+    padding: 0.4rem 0.8rem;
     border-radius: 4px;
     outline: none;
     flex: 1;
-    font-size: 0.85em;
+    font-size: 0.85rem;
+    max-width: 100%;
   }
   input:focus {
     border-color: mediumslateblue;
@@ -179,44 +168,81 @@ const filteredStarts = computed(() => {
 .tags-container {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5em;
-  margin-bottom: 1em;
-
-  button {
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  .tag-item {
+    display: flex;
     background: rgba(0, 0, 0, 0.3);
     border: 1px solid #484a4c;
     color: #aaa;
-    padding: 0.3em 0.6em;
     border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.85em;
+    font-size: 0.8rem;
     transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    gap: 0.3em;
-  }
-  button:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: aliceblue;
-  }
-
-  button.is-included {
-    background: rgba(46, 139, 87, 0.3); /* 海绿色 */
-    border-color: #2e8b57;
-    color: #98fb98;
-  }
-
-  button.is-excluded {
-    background: rgba(178, 34, 34, 0.3); /* 耐火砖红 */
-    border-color: #b22222;
-    color: #ffb6c1;
+    overflow: hidden; /* 防止内部悬停超出边框圆角 */
+    &.is-included {
+      background: rgba(46, 139, 87, 0.3); /* 海绿色 */
+      border-color: #2e8b57;
+      color: #98fb98;
+      .tag-exclude-btn {
+        border-left-color: #2e8b57;
+      }
+    }
+    &.is-excluded {
+      background: rgba(178, 34, 34, 0.3); /* 耐火砖红 */
+      border-color: #b22222;
+      color: #ffb6c1;
+      .tag-exclude-btn {
+        border-left-color: #b22222;
+      }
+    }
+    /* 标签主体（点击包含） */
+    .tag-main {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.3rem 0.5rem 0.3rem 0.6rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      &:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: aliceblue;
+      }
+    }
+    /* 标签排除按钮（点击排除） */
+    .tag-exclude-btn {
+      font-size: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.3rem 0.5rem;
+      border-left: 1px solid #484a4c;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      opacity: 0.8;
+      &:hover {
+        background: rgba(178, 34, 34, 0.6);
+        color: white;
+        opacity: 1;
+      }
+    }
   }
 }
 
 .tag-list {
-  margin-left: 0.5em;
-  font-size: 0.85em;
+  margin-left: 0.5rem;
+  font-size: 0.85rem;
   color: #888;
+}
+
+li.empty-moon {
+  color: #888;
+  font-style: italic;
+  cursor: not-allowed;
+
+  display: flex;
+  .fa-regular {
+    align-self: baseline;
+  }
 }
 
 main {
@@ -230,10 +256,10 @@ main {
   background-blend-mode: multiply, normal;
   padding: var(--main-padding);
   color: aliceblue;
-  font-size: 0.9em;
+  font-size: 0.9rem;
 
   > p {
-    padding: 0.5em var(--section-padding);
+    padding: 0.5rem var(--section-padding);
   }
 
   > footer {
@@ -243,13 +269,13 @@ main {
   > footer h1 {
     font-family: 'ZSFT-685';
     font-weight: normal;
-    font-size: 1.6em;
+    font-size: 1.6rem;
   }
 
   > footer h2 {
     font-family: 'ZSFT-651';
     font-weight: lighter;
-    font-size: 0.9em;
+    font-size: 0.9rem;
     text-transform: uppercase;
   }
 
@@ -266,60 +292,75 @@ section {
     0 0 0 1px #484a4c,
     0 1px 3px 0 rgb(0 0 0 / 0.1),
     0 1px 2px -1px rgb(0 0 0 / 0.1);
-  margin: 1em 0;
-  padding-top: 1em;
-  padding-bottom: 1em;
+  margin: 1rem 0;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
 
   ul {
     height: 20rem;
     overflow-x: auto;
 
-    padding-left: 1em;
+    padding-left: 0.5rem;
 
     @media screen and (max-width: 600px) {
       padding-left: 0;
     }
 
     li {
-      padding: 0.5em;
+      padding: 0.5rem 0;
+      padding-left: 0.5rem;
+
+      // display: flex;
+      // justify-content: flex-start;
+      // align-items: baseline;
+      gap: 4px;
       cursor: pointer;
 
       @media screen and (max-width: 600px) {
+        padding-left: 0;
         border-bottom: 1px solid #484a4c;
       }
 
       transition: 0.3s;
 
-      > i {
-        width: 1.2em;
-        height: 1.2em;
-        margin-right: 0.2em;
+      position: relative;
+
+      > i:first-of-type {
+        width: 1.2rem;
+        height: 1.2rem;
         display: inline-block;
+        padding-top: 4px;
       }
 
-      > span {
+      > span:first-of-type {
         background: black;
-        font-family: monospace;
+        font-family: 'Consolas', 'Menlo', 'Monaco', 'DejaVu Sans Mono', 'Ubuntu Mono', 'Courier New', monospace;
         display: inline-block;
         border: 1px solid #484a4c;
         width: 1.2rem;
         height: 1.2rem;
         line-height: 1.2rem;
+        font-size: 0.8rem;
         text-align: center;
-        vertical-align: middle;
         border-radius: 4px;
+        transition: 0.3s;
       }
     }
-    > :not(:first-child):hover {
+    > :not(li:first-of-type):not(.empty-moon):hover,
+    > :not(li:first-of-type):not(.empty-moon):active {
       //color: mediumpurple;
       background: rgba(255, 255, 255, 0.15);
+      > span:first-of-type {
+        color: black;
+        background-color: white;
+      }
     }
     @media screen and (min-width: 600px) {
       > :nth-child(odd) {
         background: rgba(255, 255, 255, 0.05);
       }
     }
-    > :first-child {
+    > li:first-of-type {
       cursor: not-allowed;
     }
   }
