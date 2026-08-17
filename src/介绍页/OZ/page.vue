@@ -113,11 +113,11 @@ async function saveTagStates(option: Record<string, number>) {
         <li v-for="s in filteredStarts" :key="s.id" aria-label="button" @click="changeGreeting(s.id)">
           <span>{{ s.id + 1 }}</span
           ><i v-if="s.tags.has('NSFW')"><NSFWIcon /></i> {{ s.name }}
-          <!-- <span v-if="s.tags.length > 0" class="tag-list">
-            <span v-for="tag in s.tags" :key="tag" class="tag-badge">[{{ tag }}]</span>
-          </span> -->
         </li>
 
+        <!-- <span v-if="s.tags.length > 0" class="tag-list">
+            <span v-for="tag in s.tags" :key="tag" class="tag-badge">[{{ tag }}]</span>
+          </span> -->
         <li v-if="filteredStarts.length === 0" class="empty-moon">
           月球的背面空荡荡...<i class="fa-regular fa-moon"></i>
         </li>
