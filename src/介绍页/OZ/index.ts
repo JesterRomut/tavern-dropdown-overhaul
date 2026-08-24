@@ -7,7 +7,8 @@ import Page from './page.vue';
 //   ],
 // });
 // router.replace('/日记');
-
 $(() => {
-  createApp(Page).mount('#app');
+  const app = createApp(Page);
+  //app.use(tooltip);
+  app.mount('#app');
 });

@@ -1,11 +1,57 @@
 <script setup lang="ts">
+import _, { debounce } from 'lodash';
 import NSFWIcon from './NSFWIcon.vue';
-import { starts } from './starts';
+import { Start, starts } from './starts';
+import StartTooltip from './StartTooltip.vue';
+import { vTooltip } from './tooltip';
 import { changeGreeting } from './util';
 
-const searchQuery = ref('');
-// 0: 未选中, 1: 包含, -1: 排除
-const tagStates = ref<Record<string, number>>(loadTagStates());
+const PATH_TAGSTATES = 'OZ.TagStates';
+const PATH_SEARCHQUERY = 'OZ.SearchQuery';
+
+function loadTagStates(): Record<string, number> {
+  const variables = getVariables({ type: 'global' });
+  return { ..._.get(variables, 'OZ.TagStates', {}) };
+}
+
+function loadSearchQuery(): string {
+  const variables = getVariables({ type: 'global' });
+  return _.get(variables, 'OZ.SearchQuery', '');
+}
+
+function saveStates() {
+  const rawState = toRaw(tagStates.value);
+  const rawQuery = toRaw(searchQuery.value);
+
+  const stateToSave = Object.fromEntries(Object.entries(rawState).filter(([_, value]) => value !== 0));
+
+  const variables = getVariables({ type: 'global' });
+
+  if (
+    _.isEqual(_.get(variables, PATH_TAGSTATES, {}), stateToSave) &&
+    _.isEqual(_.get(variables, PATH_SEARCHQUERY, ''), rawQuery)
+  )
+    return;
+  _.set(variables, PATH_TAGSTATES, stateToSave);
+  _.set(variables, PATH_SEARCHQUERY, rawQuery);
+  replaceVariables(variables, { type: 'global' });
+  if (rawQuery === '') {
+    deleteVariable(PATH_SEARCHQUERY, { type: 'global' });
+  }
+}
+
+$(window).on('pagehide', () => {
+  saveStates();
+});
+// 从持久化加载搜索关键词
+const searchQuery = ref(loadSearchQuery());
+
+enum TagState {
+  UNFILTERED = 0,
+  INCLUDE = 1,
+  EXCLUDE = -1,
+}
+const tagStates = ref<Record<string, TagState>>(loadTagStates());
 const allTags = computed(() => {
   let tags = new Set<string>();
   starts.forEach(s => {
@@ -13,32 +59,18 @@ const allTags = computed(() => {
   });
   return [...tags].reverse();
 });
-// 【修改】合并新标签：保留已加载的持久化状态，只为未记录的新 tag 初始化为 0
 watch(
   allTags,
   tags => {
     tags.forEach(tag => {
       if (tagStates.value[tag] === undefined) {
-        tagStates.value[tag] = 0;
+        tagStates.value[tag] = TagState.UNFILTERED;
       }
     });
   },
   { immediate: true },
 );
-watch(
-  tagStates,
-  async newState => {
-    // 使用 toRaw 解除 Vue 的 Proxy 响应式代理
-    const rawState = toRaw(newState);
-
-    // 过滤掉值为 0 的项，只保留 1 和 -1
-    const stateToSave = Object.fromEntries(Object.entries(rawState).filter(([_, value]) => value !== 0));
-
-    // 传入纯净且已过滤的普通对象进行保存
-    await saveTagStates(stateToSave);
-  },
-  { deep: true }, // 必须开启 deep，因为我们修改的是对象内部的属性
-);
+watch([tagStates, searchQuery], debounce(saveStates, 3000), { deep: true });
 
 const toggleInclude = (tag: string) => {
   tagStates.value[tag] = tagStates.value[tag] === 1 ? 0 : 1;
@@ -54,6 +86,7 @@ const filteredStarts = computed(() => {
 
   return starts.filter(s => {
     const matchName = s.name.toLowerCase().includes(searchQuery.value.toLowerCase());
+    const matchDesc = s.desc?.toLowerCase().includes(searchQuery.value.toLowerCase()) ?? false;
 
     // 必须包含所有 requiredTags
     const matchRequired = requiredTags.length === 0 || requiredTags.every(t => s.tags.has(t));
@@ -61,21 +94,55 @@ const filteredStarts = computed(() => {
     // 不能包含任何 excludedTags
     const matchExcluded = excludedTags.length === 0 || !excludedTags.some(t => s.tags.has(t));
 
-    return matchName && matchRequired && matchExcluded;
+    return (matchName || matchDesc) && matchRequired && matchExcluded;
   });
 });
 
-// --- 持久化辅助函数 ---
-function loadTagStates(): Record<string, number> {
-  const variables = getVariables({ type: 'global' });
-  // 【修正】将检查的 key 从 'OZ.Tag搜索' 改为 'OZ.TagStates' 保持一致
-  return { ..._.get(variables, 'OZ.TagStates', {}) };
+function formatTooltip(s: Start) {
+  // const content = h('div', [
+  //   s.desc ? h('span', builtin.renderMarkdown(s.desc)) : null,
+  //   s.desc ? h('br') : null,
+  //   s.tags.size > 0 ? h('span', `Tags: ` + _.join(Array.from(s.tags), ', ')) : null,
+  // ]);
+  const content = h(StartTooltip, {
+    desc: s.desc ? builtin.renderMarkdown(s.desc) : undefined,
+    tags: s.tags,
+  });
+  // const content = <div><span>sss</span></div>;
+  return content;
 }
-async function saveTagStates(option: Record<string, number>) {
-  const variables = getVariables({ type: 'global' });
-  _.set(variables, 'OZ.TagStates', option);
-  await replaceVariables(variables, { type: 'global' });
-}
+
+// const tooltipOffsetX = ref(0);
+// // 缓存当前 hover 元素的 rect
+// let cachedRect: DOMRect | null = null;
+// let rafId: number | null = null;
+// let lastClientX = 0;
+
+// function handleMouseEnter(e: MouseEvent) {
+//   const target = e.currentTarget as HTMLLIElement;
+//   cachedRect = target.getBoundingClientRect();
+// }
+
+// function handleMouseMove(e: MouseEvent) {
+//   lastClientX = e.clientX;
+//   if (rafId !== null) return; // 已有待执行的帧，跳过
+//   rafId = requestAnimationFrame(() => {
+//     if (cachedRect) {
+//       const mouseX = lastClientX - cachedRect.left;
+//       const centerX = cachedRect.width / 2;
+//       tooltipOffsetX.value = mouseX - centerX;
+//     }
+//     rafId = null;
+//   });
+// }
+
+// // 组件卸载时取消动画帧
+// onBeforeUnmount(() => {
+//   if (rafId !== null) {
+//     cancelAnimationFrame(rafId);
+//     rafId = null;
+//   }
+// });
 </script>
 
 <template>
@@ -109,15 +176,22 @@ async function saveTagStates(option: Record<string, number>) {
       </div>
 
       <ul>
-        <li><span>1</span>（自定义开局/本介绍页不会发送给AI）</li>
-        <li v-for="s in filteredStarts" :key="s.id" aria-label="button" @click="changeGreeting(s.id)">
+        <li v-tooltip="'此介绍页不会发送给AI：直接发送消息即可。'">
+          <span>1</span>（自定义开局/本介绍页不会发送给AI）
+        </li>
+        <li
+          v-for="s in filteredStarts"
+          :key="s.id"
+          v-tooltip="formatTooltip(s)"
+          aria-label="button"
+          @click="changeGreeting(s.id)"
+        >
           <span>{{ s.id + 1 }}</span
           ><i v-if="s.tags.has('NSFW')"><NSFWIcon /></i> {{ s.name }}
+          <!--           v-tooltip="formatTooltip(s)" <div class="tooltip" :style="{ transform: `translateX(calc(-50% + ${tooltipOffsetX}px))` }">
+            Tag: {{ _.join(Array.from(s.tags), ', ') }}
+          </div> -->
         </li>
-
-        <!-- <span v-if="s.tags.length > 0" class="tag-list">
-            <span v-for="tag in s.tags" :key="tag" class="tag-badge">[{{ tag }}]</span>
-          </span> -->
         <li v-if="filteredStarts.length === 0" class="empty-moon">
           月球的背面空荡荡...<i class="fa-regular fa-moon"></i>
         </li>
@@ -141,7 +215,15 @@ async function saveTagStates(option: Record<string, number>) {
     </footer>
   </main>
 </template>
+<script lang="ts">
+export default {
+  directives: {
+    tooltip: vTooltip,
+  },
+};
+</script>
 <style lang="scss">
+@use 'tooltip.scss';
 @import url('data:text/css,%40font-face%7Bfont-family%3A%22ZSFT-685%22%3Bsrc%3Aurl(%22https%3A%2F%2Ffontsapi.zeoseven.com%2F685%2Fmain.woff2%22)%20format(%22woff2%22)%3Bfont-style%3Anormal%3Bfont-weight%3A400%3Bfont-display%3Aswap%3B%7D');
 @import url('data:text/css,%40font-face%7Bfont-family%3A%22ZSFT-651%22%3Bsrc%3Aurl(%22https%3A%2F%2Ffontsapi.zeoseven.com%2F651%2Fitalic.woff2%22)%20format(%22woff2%22)%3Bfont-style%3Aitalic%3Bfont-weight%3A100%20900%3Bfont-display%3Aswap%3B%7D%40font-face%7Bfont-family%3A%22ZSFT-651%22%3Bsrc%3Aurl(%22https%3A%2F%2Ffontsapi.zeoseven.com%2F651%2Fmain.woff2%22)%20format(%22woff2%22)%3Bfont-style%3Anormal%3Bfont-weight%3A100%20900%3Bfont-display%3Aswap%3B%7D');
 
@@ -309,12 +391,17 @@ section {
     li {
       padding: 0.5rem 0;
       padding-left: 0.5rem;
-
       // display: flex;
       // justify-content: flex-start;
       // align-items: baseline;
       gap: 4px;
       cursor: pointer;
+
+      user-select: none;
+      -moz-user-select: none;
+      -khtml-user-select: none;
+      -webkit-user-select: none;
+      -o-user-select: none;
 
       @media screen and (max-width: 600px) {
         padding-left: 0;
@@ -345,6 +432,60 @@ section {
         border-radius: 4px;
         transition: 0.3s;
       }
+
+      // position: relative; // 必须添加，使 tooltip 定位生效
+
+      // &:hover {
+      //   .tooltip {
+      //     display: block;
+      //   }
+      // }
+      // .tooltip {
+      //   position: absolute;
+      //   display: none;
+      //   bottom: calc(100% + 8px); // 显示在 li 上方
+      //   transform: translateX(var(--move-x));
+      //   transition: transform 0.05s linear; // 加一点过渡更平滑
+      //   left: 50%;
+      //   transform: translateX(-50%);
+      //   background: black;
+      //   color: white;
+      //   border: 1px solid white;
+      //   padding: 4px 8px;
+      //   border-radius: 4px;
+      //   font-size: 0.8rem;
+      //   white-space: nowrap;
+      //   z-index: 1000;
+
+      //   // 白色边框箭头（下）
+      //   &::before {
+      //     content: '';
+      //     position: absolute;
+      //     top: 100%;
+      //     left: 50%;
+      //     transform: translateX(-50%);
+      //     width: 0;
+      //     height: 0;
+      //     border-style: solid;
+      //     border-width: 6px 6px 0 6px;
+      //     border-color: white transparent transparent transparent;
+      //     z-index: 1;
+      //   }
+      //   // 黑色填充箭头（偏移 1px，形成边框效果）
+      //   &::after {
+      //     content: '';
+      //     position: absolute;
+      //     top: calc(100% - 1px);
+      //     left: 50%;
+      //     transform: translateX(-50%);
+      //     width: 0;
+      //     height: 0;
+      //     border-style: solid;
+      //     border-width: 6px 6px 0 6px;
+      //     border-color: black transparent transparent transparent;
+      //     z-index: 2;
+      //   }
+      // }
     }
     > :not(li:first-of-type):not(.empty-moon):hover,
     > :not(li:first-of-type):not(.empty-moon):active {

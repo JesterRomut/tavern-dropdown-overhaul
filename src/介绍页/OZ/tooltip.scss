@@ -1,0 +1,52 @@
+/* tooltip.scss */
+.vue-custom-tooltip {
+  position: fixed;
+  pointer-events: none; // 避免阻挡鼠标自身触发 mouseleave
+  transform: translate(-50%, calc(-100% - 10px)); // 居中且位于鼠标上方 10px
+  transition: transform 0.05s linear;
+  background: black;
+  color: white;
+  border: 1px solid white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  z-index: 99999;
+
+  /* ---- 修复代码 ---- */
+  box-sizing: border-box;
+  width: max-content; // 1. 强制按内容撑开宽度，不受 left 到屏幕右边缘的距离挤压
+  max-width: calc(100vw - 32px); // 2. 防止超长文本撑破屏幕，左右各留 16px 安全边距
+  word-break: break-word; // 3. 超过最大宽度时允许正常断词折行
+  overflow-wrap: break-word;
+  /* -------------------- */
+
+  // 白色边框下箭头
+  &::before {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 6px 6px 0 6px;
+    border-color: white transparent transparent transparent;
+    z-index: 1;
+  }
+
+  // 黑色填充下箭头（偏移1px覆盖白边）
+  &::after {
+    content: '';
+    position: absolute;
+    top: calc(100% - 1px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 6px 6px 0 6px;
+    border-color: black transparent transparent transparent;
+    z-index: 2;
+  }
+}
