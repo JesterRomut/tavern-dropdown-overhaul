@@ -147,7 +147,7 @@ function formatTooltip(s: Start) {
 
 <template>
   <main>
-    <p>作者@Kernschmelze。OZ，欧几里得。</p>
+    <p>作者@Kernschmelze。OZ，只是一个因特异功能实验室倒闭而出来混饭吃的超能力者。</p>
     <p>“大家早就不需要超能力者了。有了计算机和互联网，谁还需要被折弯的勺子和被撬开的锁呢？”</p>
     <section>
       <h3><i class="fa-solid fa-hamsa"></i> 开场一览</h3>
