@@ -9,6 +9,12 @@ import { changeGreeting } from './util';
 const PATH_TAGSTATES = 'OZ.TagStates';
 const PATH_SEARCHQUERY = 'OZ.SearchQuery';
 
+const PATH_FAVORITES = 'OZ.Favorites';
+function loadFavorites(): number[] {
+  const variables = getVariables({ type: 'global' });
+  return _.get(variables, PATH_FAVORITES, []);
+}
+
 function loadTagStates(): Record<string, number> {
   const variables = getVariables({ type: 'global' });
   return { ..._.get(variables, 'OZ.TagStates', {}) };
@@ -19,31 +25,48 @@ function loadSearchQuery(): string {
   return _.get(variables, 'OZ.SearchQuery', '');
 }
 
+// 4. 更新 saveStates 方法（在其中加入 Favorites 的持久化）
 function saveStates() {
   const rawState = toRaw(tagStates.value);
   const rawQuery = toRaw(searchQuery.value);
-
+  const rawFavorites = toRaw(favorites.value);
   const stateToSave = Object.fromEntries(Object.entries(rawState).filter(([_, value]) => value !== 0));
-
   const variables = getVariables({ type: 'global' });
-
   if (
     _.isEqual(_.get(variables, PATH_TAGSTATES, {}), stateToSave) &&
-    _.isEqual(_.get(variables, PATH_SEARCHQUERY, ''), rawQuery)
+    _.isEqual(_.get(variables, PATH_SEARCHQUERY, ''), rawQuery) &&
+    _.isEqual(_.get(variables, PATH_FAVORITES, []), rawFavorites)
   )
     return;
   _.set(variables, PATH_TAGSTATES, stateToSave);
   _.set(variables, PATH_SEARCHQUERY, rawQuery);
+  _.set(variables, PATH_FAVORITES, rawFavorites);
   replaceVariables(variables, { type: 'global' });
   if (rawQuery === '') {
     deleteVariable(PATH_SEARCHQUERY, { type: 'global' });
+  }
+  if (rawFavorites.length === 0) {
+    deleteVariable(PATH_FAVORITES, { type: 'global' });
   }
 }
 
 $(window).on('pagehide', () => {
   saveStates();
 });
-// 从持久化加载搜索关键词
+
+const favorites = ref<number[]>(loadFavorites());
+const onlyFavorites = ref(false); // 收藏过滤器开关
+
+const isFavorite = (id: number) => favorites.value.includes(id);
+const toggleFavorite = (id: number) => {
+  const idx = favorites.value.indexOf(id);
+  if (idx > -1) {
+    favorites.value.splice(idx, 1);
+  } else {
+    favorites.value.push(id);
+  }
+};
+
 const searchQuery = ref(loadSearchQuery());
 
 enum TagState {
@@ -70,7 +93,7 @@ watch(
   },
   { immediate: true },
 );
-watch([tagStates, searchQuery], debounce(saveStates, 3000), { deep: true });
+watch([tagStates, searchQuery, favorites], debounce(saveStates, 3000), { deep: true });
 
 const toggleInclude = (tag: string) => {
   tagStates.value[tag] = tagStates.value[tag] === 1 ? 0 : 1;
@@ -94,55 +117,18 @@ const filteredStarts = computed(() => {
     // 不能包含任何 excludedTags
     const matchExcluded = excludedTags.length === 0 || !excludedTags.some(t => s.tags.has(t));
 
-    return (matchName || matchDesc) && matchRequired && matchExcluded;
+    const matchFavorite = favorites.value.length > 0 ? !onlyFavorites.value || favorites.value.includes(s.id) : true;
+    return (matchName || matchDesc) && matchRequired && matchExcluded && matchFavorite;
   });
 });
 
 function formatTooltip(s: Start) {
-  // const content = h('div', [
-  //   s.desc ? h('span', builtin.renderMarkdown(s.desc)) : null,
-  //   s.desc ? h('br') : null,
-  //   s.tags.size > 0 ? h('span', `Tags: ` + _.join(Array.from(s.tags), ', ')) : null,
-  // ]);
   const content = h(StartTooltip, {
     desc: s.desc ? builtin.renderMarkdown(s.desc) : undefined,
     tags: s.tags,
   });
-  // const content = <div><span>sss</span></div>;
   return content;
 }
-
-// const tooltipOffsetX = ref(0);
-// // 缓存当前 hover 元素的 rect
-// let cachedRect: DOMRect | null = null;
-// let rafId: number | null = null;
-// let lastClientX = 0;
-
-// function handleMouseEnter(e: MouseEvent) {
-//   const target = e.currentTarget as HTMLLIElement;
-//   cachedRect = target.getBoundingClientRect();
-// }
-
-// function handleMouseMove(e: MouseEvent) {
-//   lastClientX = e.clientX;
-//   if (rafId !== null) return; // 已有待执行的帧，跳过
-//   rafId = requestAnimationFrame(() => {
-//     if (cachedRect) {
-//       const mouseX = lastClientX - cachedRect.left;
-//       const centerX = cachedRect.width / 2;
-//       tooltipOffsetX.value = mouseX - centerX;
-//     }
-//     rafId = null;
-//   });
-// }
-
-// // 组件卸载时取消动画帧
-// onBeforeUnmount(() => {
-//   if (rafId !== null) {
-//     cancelAnimationFrame(rafId);
-//     rafId = null;
-//   }
-// });
 </script>
 
 <template>
@@ -155,45 +141,57 @@ function formatTooltip(s: Start) {
         <input v-model="searchQuery" type="text" placeholder="搜索开场..." />
       </div>
 
-      <div class="tags-container">
-        <div
-          v-for="tag in allTags"
-          :key="tag"
-          class="tag-item"
-          :class="[{ 'is-included': tagStates[tag] === 1, 'is-excluded': tagStates[tag] === -1 }]"
-        >
-          <!-- 左侧：点击切换包含状态 -->
-          <div class="tag-main" @click="toggleInclude(tag)">
-            <i v-if="tagStates[tag] === 1" class="fa-solid fa-circle-check"></i>
-            <i v-else-if="tagStates[tag] === -1" class="fa-solid fa-circle-xmark"></i>
-            <span>{{ tag }}</span>
-          </div>
-          <!-- 右侧：减号，点击切换排除状态 -->
-          <div class="tag-exclude-btn" title="排除此标签" @click.stop="toggleExclude(tag)">
-            <i class="fa-solid fa-minus"></i>
+      <div class="tags-root">
+        <div>
+          <div
+            v-for="tag in allTags"
+            :key="tag"
+            class="tag-item"
+            :class="[{ 'is-included': tagStates[tag] === 1, 'is-excluded': tagStates[tag] === -1 }]"
+          >
+            <!-- 左侧：点击切换包含状态 -->
+            <div class="tag-main" @click="toggleInclude(tag)">
+              <i v-if="tagStates[tag] === 1" class="fa-solid fa-circle-check"></i>
+              <i v-else-if="tagStates[tag] === -1" class="fa-solid fa-circle-xmark"></i>
+              <span>{{ tag }}</span>
+            </div>
+            <!-- 右侧：减号，点击切换排除状态 -->
+            <div class="tag-exclude-btn" title="排除此标签" @click.stop="toggleExclude(tag)">
+              <i class="fa-solid fa-minus"></i>
+            </div>
           </div>
         </div>
+        <Transition name="bounce">
+          <div
+            v-if="favorites.length > 0"
+            class="tag-item fav-filter-btn"
+            :class="{ 'is-active': onlyFavorites, 'is-visible': favorites.length > 0 }"
+            @click="onlyFavorites = !onlyFavorites"
+          >
+            <i :class="onlyFavorites ? 'fa-solid fa-star' : 'fa-regular fa-star'" title="仅显示收藏"></i></div
+        ></Transition>
       </div>
 
       <ul>
         <li v-tooltip="'此介绍页不会发送给AI：直接发送消息即可。'">
-          <span>1</span>（自定义开局/本介绍页不会发送给AI）
+          <div><span>1</span>（自定义开局/本介绍页不会发送给AI）</div>
         </li>
-        <li
-          v-for="s in filteredStarts"
-          :key="s.id"
-          v-tooltip="formatTooltip(s)"
-          aria-label="button"
-          @click="changeGreeting(s.id)"
-        >
-          <span>{{ s.id + 1 }}</span
-          ><i v-if="s.tags.has('NSFW')"><NSFWIcon /></i> {{ s.name }}
-          <!--           v-tooltip="formatTooltip(s)" <div class="tooltip" :style="{ transform: `translateX(calc(-50% + ${tooltipOffsetX}px))` }">
-            Tag: {{ _.join(Array.from(s.tags), ', ') }}
-          </div> -->
+        <li v-for="s in filteredStarts" :key="s.id" aria-label="button" :class="{ 'is-favorite': isFavorite(s.id) }">
+          <div v-tooltip="formatTooltip(s)" @click="changeGreeting(s.id)">
+            <span>{{ s.id + 1 }}</span>
+            <i v-if="s.tags.has('NSFW')"><NSFWIcon /></i>
+            {{ s.name }}
+          </div>
+          <i
+            class="favorite"
+            :class="isFavorite(s.id) ? 'fa-solid fa-star' : 'fa-regular fa-star'"
+            :title="isFavorite(s.id) ? '取消收藏' : '收藏开局'"
+            @click.stop="toggleFavorite(s.id)"
+          ></i>
+          <!--收藏-->
         </li>
         <li v-if="filteredStarts.length === 0" class="empty-moon">
-          月球的背面空荡荡...<i class="fa-regular fa-moon"></i>
+          <div>月球的背面空荡荡...<i class="fa-regular fa-moon"></i></div>
         </li>
       </ul>
     </section>
@@ -227,6 +225,24 @@ export default {
 @import url('data:text/css,%40font-face%7Bfont-family%3A%22ZSFT-685%22%3Bsrc%3Aurl(%22https%3A%2F%2Ffontsapi.zeoseven.com%2F685%2Fmain.woff2%22)%20format(%22woff2%22)%3Bfont-style%3Anormal%3Bfont-weight%3A400%3Bfont-display%3Aswap%3B%7D');
 @import url('data:text/css,%40font-face%7Bfont-family%3A%22ZSFT-651%22%3Bsrc%3Aurl(%22https%3A%2F%2Ffontsapi.zeoseven.com%2F651%2Fitalic.woff2%22)%20format(%22woff2%22)%3Bfont-style%3Aitalic%3Bfont-weight%3A100%20900%3Bfont-display%3Aswap%3B%7D%40font-face%7Bfont-family%3A%22ZSFT-651%22%3Bsrc%3Aurl(%22https%3A%2F%2Ffontsapi.zeoseven.com%2F651%2Fmain.woff2%22)%20format(%22woff2%22)%3Bfont-style%3Anormal%3Bfont-weight%3A100%20900%3Bfont-display%3Aswap%3B%7D');
 
+.bounce-enter-active {
+  animation: bounce-in 0.5s;
+}
+.bounce-leave-active {
+  animation: bounce-in 0.5s reverse;
+}
+@keyframes bounce-in {
+  0% {
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 /* 搜索栏样式 */
 .search-bar {
   display: flex;
@@ -247,13 +263,40 @@ export default {
   }
 }
 /* 标签容器和按钮样式 */
-.tags-container {
+.tags-root {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 5px;
   margin-bottom: 1rem;
+  > div:nth-child(1) {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+
+    @media screen and (max-width: 600px) {
+      display: grid;
+      /* 核心 1：固定为 2 行（如果想展示 3 行就写 3 个 max-content 或 repeat(3, auto)） */
+      grid-template-rows: repeat(2, auto);
+      /* 核心 2：让元素按“列”自动向右延展，而不是按行换行 */
+      grid-auto-flow: column;
+      /* 核心 3：每列宽度自适应内容 */
+      grid-auto-columns: max-content;
+      flex: 1;
+      min-width: 0; /* 允许容器宽度收缩，从而触发横向滚动 */
+      gap: 0.5rem;
+      overflow-x: auto; /* 开启横向滚动 */
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 4px; /* 留一点边距防滚动条挤压/边框切边 */
+    }
+  }
+
   .tag-item {
     display: flex;
+    flex-shrink: 0;
     background: rgba(0, 0, 0, 0.3);
     border: 1px solid #484a4c;
     color: #aaa;
@@ -280,6 +323,7 @@ export default {
     /* 标签主体（点击包含） */
     .tag-main {
       display: flex;
+      flex: 1;
       align-items: center;
       gap: 0.3rem;
       padding: 0.3rem 0.5rem 0.3rem 0.6rem;
@@ -308,8 +352,22 @@ export default {
       }
     }
   }
+  .fav-filter-btn {
+    flex-shrink: 0;
+    flex-basis: 2rem;
+    align-self: flex-end;
+    display: flex;
+    align-items: center;
+    justify-items: center;
+    justify-content: center;
+    aspect-ratio: 1 / 1;
+    &.is-active {
+      background: rgba(147, 112, 216, 0.2) !important;
+      border-color: mediumpurple !important;
+      color: mediumpurple !important;
+    }
+  }
 }
-
 .tag-list {
   margin-left: 0.5rem;
   font-size: 0.85rem;
@@ -382,12 +440,27 @@ section {
     height: 20rem;
     overflow-x: auto;
 
-    padding-left: 0.5rem;
+    scrollbar-gutter: stable;
 
-    @media screen and (max-width: 600px) {
-      padding-left: 0;
+    // padding-left: 0.5rem;
+
+    // @media screen and (max-width: 600px) {
+    //   padding-left: 0;
+    // }
+    li.is-favorite {
+      background: rgba(163, 119, 249, 0.1);
+      > i:first-of-type {
+        color: rgba(147, 112, 216, 0.7);
+      }
+      > div:first-of-type > span:first-of-type {
+        border: 1px solid rgb(87, 59, 145);
+      }
     }
-
+    // @media screen and (min-width: 600px) {
+    //   > li.is-favorite:nth-child(odd) {
+    //     background: rgba(186, 156, 246, 0.16);
+    //   }
+    // }
     li {
       padding: 0.5rem 0;
       padding-left: 0.5rem;
@@ -410,90 +483,60 @@ section {
 
       transition: 0.3s;
 
-      position: relative;
+      display: flex;
+      align-items: center;
 
       > i:first-of-type {
-        width: 1.2rem;
-        height: 1.2rem;
-        display: inline-block;
-        padding-top: 4px;
+        margin-right: 0.5rem;
+        color: #ffffff44;
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        margin-left: auto;
+        &:hover {
+          color: mediumpurple;
+          transform: scale(1.2);
+        }
       }
 
-      > span:first-of-type {
-        background: black;
-        font-family: 'Consolas', 'Menlo', 'Monaco', 'DejaVu Sans Mono', 'Ubuntu Mono', 'Courier New', monospace;
-        display: inline-block;
-        border: 1px solid #484a4c;
-        width: 1.2rem;
-        height: 1.2rem;
-        line-height: 1.2rem;
-        font-size: 0.8rem;
-        text-align: center;
-        border-radius: 4px;
-        transition: 0.3s;
+      > div:first-of-type {
+        flex-grow: 2;
+        > i:first-of-type {
+          width: 1.2rem;
+          height: 1.2rem;
+          display: inline-block;
+          padding-top: 4px;
+        }
+
+        > span:first-of-type {
+          background: black;
+          font-family: 'Consolas', 'Menlo', 'Monaco', 'DejaVu Sans Mono', 'Ubuntu Mono', 'Courier New', monospace;
+          display: inline-block;
+          border: 1px solid #484a4c;
+          width: 1.2rem;
+          height: 1.2rem;
+          line-height: 1.2rem;
+          font-size: 0.8rem;
+          text-align: center;
+          border-radius: 4px;
+          transition: 0.3s;
+        }
       }
 
-      // position: relative; // 必须添加，使 tooltip 定位生效
-
-      // &:hover {
-      //   .tooltip {
-      //     display: block;
-      //   }
-      // }
-      // .tooltip {
-      //   position: absolute;
-      //   display: none;
-      //   bottom: calc(100% + 8px); // 显示在 li 上方
-      //   transform: translateX(var(--move-x));
-      //   transition: transform 0.05s linear; // 加一点过渡更平滑
-      //   left: 50%;
-      //   transform: translateX(-50%);
-      //   background: black;
-      //   color: white;
-      //   border: 1px solid white;
-      //   padding: 4px 8px;
-      //   border-radius: 4px;
-      //   font-size: 0.8rem;
-      //   white-space: nowrap;
-      //   z-index: 1000;
-
-      //   // 白色边框箭头（下）
-      //   &::before {
-      //     content: '';
-      //     position: absolute;
-      //     top: 100%;
-      //     left: 50%;
-      //     transform: translateX(-50%);
-      //     width: 0;
-      //     height: 0;
-      //     border-style: solid;
-      //     border-width: 6px 6px 0 6px;
-      //     border-color: white transparent transparent transparent;
-      //     z-index: 1;
-      //   }
-      //   // 黑色填充箭头（偏移 1px，形成边框效果）
-      //   &::after {
-      //     content: '';
-      //     position: absolute;
-      //     top: calc(100% - 1px);
-      //     left: 50%;
-      //     transform: translateX(-50%);
-      //     width: 0;
-      //     height: 0;
-      //     border-style: solid;
-      //     border-width: 6px 6px 0 6px;
-      //     border-color: black transparent transparent transparent;
-      //     z-index: 2;
-      //   }
+      // .favorite {
+      //   float: right;
       // }
     }
     > :not(li:first-of-type):not(.empty-moon):hover,
     > :not(li:first-of-type):not(.empty-moon):active {
       //color: mediumpurple;
       background: rgba(255, 255, 255, 0.15);
-      > span:first-of-type {
+      > div:first-of-type > span:first-of-type {
         color: black;
         background-color: white;
+      }
+      &.is-favorite {
+        background: rgba(147, 112, 216, 0.3);
       }
     }
     @media screen and (min-width: 600px) {
@@ -508,6 +551,13 @@ section {
 
   ::-webkit-scrollbar {
     width: 6px;
+    @media screen and (max-width: 600px) {
+      width: 4px;
+    }
+    height: 6px; /* 横向滚动条高度变细 */
+    @media screen and (max-width: 600px) {
+      height: 4px;
+    }
   }
 
   ::-webkit-scrollbar-track {
