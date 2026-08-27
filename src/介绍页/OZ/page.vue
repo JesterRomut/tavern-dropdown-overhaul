@@ -8,11 +8,17 @@ import { changeGreeting } from './util';
 
 const PATH_TAGSTATES = 'OZ.TagStates';
 const PATH_SEARCHQUERY = 'OZ.SearchQuery';
-
 const PATH_FAVORITES = 'OZ.Favorites';
+const PATH_FAVORITEONLY = 'OZ.FavoriteFilterState';
+
 function loadFavorites(): number[] {
   const variables = getVariables({ type: 'global' });
   return _.get(variables, PATH_FAVORITES, []);
+}
+
+function loadFavoriteOnly(): boolean {
+  const variables = getVariables({ type: 'global' });
+  return _.get(variables, PATH_FAVORITEONLY, false);
 }
 
 function loadTagStates(): Record<string, number> {
@@ -30,24 +36,44 @@ function saveStates() {
   const rawState = toRaw(tagStates.value);
   const rawQuery = toRaw(searchQuery.value);
   const rawFavorites = toRaw(favorites.value);
+  const rawFavOnly = toRaw(onlyFavorites.value);
   const stateToSave = Object.fromEntries(Object.entries(rawState).filter(([_, value]) => value !== 0));
   const variables = getVariables({ type: 'global' });
   if (
     _.isEqual(_.get(variables, PATH_TAGSTATES, {}), stateToSave) &&
     _.isEqual(_.get(variables, PATH_SEARCHQUERY, ''), rawQuery) &&
-    _.isEqual(_.get(variables, PATH_FAVORITES, []), rawFavorites)
+    _.isEqual(_.get(variables, PATH_FAVORITES, []), rawFavorites) &&
+    _.isEqual(_.get(variables, PATH_FAVORITEONLY, false), rawFavOnly)
   )
     return;
-  _.set(variables, PATH_TAGSTATES, stateToSave);
-  _.set(variables, PATH_SEARCHQUERY, rawQuery);
-  _.set(variables, PATH_FAVORITES, rawFavorites);
-  replaceVariables(variables, { type: 'global' });
-  if (rawQuery === '') {
-    deleteVariable(PATH_SEARCHQUERY, { type: 'global' });
-  }
-  if (rawFavorites.length === 0) {
-    deleteVariable(PATH_FAVORITES, { type: 'global' });
-  }
+  updateVariablesWith(
+    variables => {
+      if (_.isEmpty(stateToSave)) _.unset(variables, PATH_TAGSTATES);
+      else _.set(variables, PATH_TAGSTATES, stateToSave);
+      if (rawQuery === '') _.unset(variables, PATH_SEARCHQUERY);
+      else _.set(variables, PATH_SEARCHQUERY, rawQuery);
+      if (_.isEmpty(rawFavorites)) _.unset(variables, PATH_FAVORITES);
+      else _.set(variables, PATH_FAVORITES, rawFavorites);
+      if (rawFavOnly !== true) _.unset(variables, PATH_FAVORITEONLY);
+      else _.set(variables, PATH_FAVORITEONLY, rawFavOnly);
+      return variables;
+    },
+    { type: 'global' },
+  );
+
+  // replaceVariables(variables, { type: 'global' });
+  // if (rawQuery === '') {
+  //   deleteVariable(PATH_SEARCHQUERY, { type: 'global' });
+  // }
+  // if (rawFavorites.length === 0) {
+  //   deleteVariable(PATH_FAVORITES, { type: 'global' });
+  // }
+  // if (_.isEmpty(stateToSave)) {
+  //   deleteVariable(PATH_TAGSTATES, { type: 'global' });
+  // }
+  // if (!rawFavOnly) {
+  //   deleteVariable(PATH_FAVORITEONLY, { type: 'global' });
+  // }
 }
 
 $(window).on('pagehide', () => {
@@ -55,7 +81,7 @@ $(window).on('pagehide', () => {
 });
 
 const favorites = ref<number[]>(loadFavorites());
-const onlyFavorites = ref(false); // 收藏过滤器开关
+const onlyFavorites = ref(loadFavoriteOnly()); // 收藏过滤器开关
 
 const isFavorite = (id: number) => favorites.value.includes(id);
 const toggleFavorite = (id: number) => {
@@ -185,7 +211,7 @@ function formatTooltip(s: Start) {
           <i
             class="favorite"
             :class="isFavorite(s.id) ? 'fa-solid fa-star' : 'fa-regular fa-star'"
-            :title="isFavorite(s.id) ? '取消收藏' : '收藏开局'"
+            :title="isFavorite(s.id) ? '取消收藏' : '添加收藏'"
             @click.stop="toggleFavorite(s.id)"
           ></i>
           <!--收藏-->
@@ -462,8 +488,6 @@ section {
     //   }
     // }
     li {
-      padding: 0.5rem 0;
-      padding-left: 0.5rem;
       // display: flex;
       // justify-content: flex-start;
       // align-items: baseline;
@@ -475,11 +499,6 @@ section {
       -khtml-user-select: none;
       -webkit-user-select: none;
       -o-user-select: none;
-
-      @media screen and (max-width: 600px) {
-        padding-left: 0;
-        border-bottom: 1px solid #484a4c;
-      }
 
       transition: 0.3s;
 
@@ -501,6 +520,9 @@ section {
 
       > div:first-of-type {
         flex-grow: 2;
+        padding: 0.5rem 0;
+
+        padding-left: 0.5rem;
         > i:first-of-type {
           width: 1.2rem;
           height: 1.2rem;
@@ -523,6 +545,12 @@ section {
         }
       }
 
+      @media screen and (max-width: 600px) {
+        > div:first-of-type {
+          padding-left: 0;
+        }
+        border-bottom: 1px solid #ffffff3d;
+      }
       // .favorite {
       //   float: right;
       // }

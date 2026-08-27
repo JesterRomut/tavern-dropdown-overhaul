@@ -3,7 +3,6 @@
   position: fixed;
   pointer-events: none; // 避免阻挡鼠标自身触发 mouseleave
   transform: translate(-50%, calc(-100% - 10px)); // 居中且位于鼠标上方 10px
-  transition: transform 0.05s linear;
   background: black;
   color: white;
   border: 1px solid white;
@@ -12,13 +11,17 @@
   font-size: 0.8rem;
   z-index: 99999;
 
-  /* ---- 修复代码 ---- */
   box-sizing: border-box;
   width: max-content; // 1. 强制按内容撑开宽度，不受 left 到屏幕右边缘的距离挤压
   max-width: calc(100vw - 32px); // 2. 防止超长文本撑破屏幕，左右各留 16px 安全边距
   word-break: break-word; // 3. 超过最大宽度时允许正常断词折行
   overflow-wrap: break-word;
-  /* -------------------- */
+
+  @media screen and (max-width: 600px) {
+    transition:
+      left 0.1s ease-in-out,
+      top 0.1s ease-in-out;
+  }
 
   // 白色边框下箭头
   &::before {
