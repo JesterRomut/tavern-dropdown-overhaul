@@ -3,10 +3,10 @@ import { changeGreeting } from '../OZ/util';
 </script>
 <template>
   <main>
-    <div>
+    <div @click="changeGreeting(0)">
       ·
       <i class="fa-solid fa-retweet"></i>
-      <span @click="changeGreeting(0)">返回介绍页</span>
+      <span>返回介绍页</span>
       ·
     </div>
   </main>
@@ -17,6 +17,12 @@ main {
   display: flex;
   align-items: center;
   justify-content: center;
+
+  user-select: none;
+  -moz-user-select: none;
+  -khtml-user-select: none;
+  -webkit-user-select: none;
+  -o-user-select: none;
 
   div {
     display: flex;
