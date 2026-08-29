@@ -1,23 +1,14 @@
 import { debounce } from 'lodash';
 
 import { createScriptIdDiv, teleportStyle } from '@util/script';
-import {
-  ACTIVE_CLASS,
-  DROPDOWN_ID,
-  EVENT_NAMESPACE,
-  injectGlobalStyles,
-  SCROLL_NAMESPACE,
-  SEARCH_THRESHOLD,
-  STYLE_ID,
-} from './conf';
+import { ACTIVE_CLASS, DROPDOWN_ID, EVENT_NAMESPACE, injectGlobalStyles, SEARCH_THRESHOLD, STYLE_ID } from './conf';
 import view from './conf_view.vue';
-
-//const REPLACED_MARKER = 'k3rn-replaced';
 
 const closeDropdown = () => {
   const $activeSelect = $(`.${ACTIVE_CLASS}`);
   if ($activeSelect.length) {
-    $activeSelect.parents().add(document).off(`.${SCROLL_NAMESPACE}`);
+    // 修复 1：统一使用 EVENT_NAMESPACE 解绑所有相关父级事件
+    $activeSelect.parents().add(document).off(`.${EVENT_NAMESPACE}`);
     $activeSelect.removeClass(ACTIVE_CLASS);
   }
   $(`#${DROPDOWN_ID}`).remove();
@@ -28,15 +19,23 @@ const isMobile = () => Math.min(window.screen.width, window.outerWidth) <= 500;
 const openDropdown = ($select: JQuery<HTMLElement>) => {
   $select.addClass(ACTIVE_CLASS);
 
-  const $parents = $select.parents().add(document);
-  $parents.on(`scroll.${EVENT_NAMESPACE}`, () => {
-    closeDropdown();
-  });
+  // 修复 2：防止 Firefox 在 DOM 挂载和 focus 时同步触发 scroll 导致刚打开就秒关
+  setTimeout(() => {
+    // 仅在菜单还存在时绑定
+    if (!$select.hasClass(ACTIVE_CLASS)) return;
 
-  //const options = $select.find('option');
+    const $parents = $select.parents().add(document);
+    $parents.on(`scroll.${EVENT_NAMESPACE}`, e => {
+      // 如果滚动发生在下拉框自身的选项列表内，不关闭
+      if ($(e.target).closest(`#${DROPDOWN_ID}`).length) return;
+      closeDropdown();
+    });
+  }, 50);
+
   const items: JQuery<HTMLElement>[] = [];
   let validOptionCount = 0;
-  // 抽离出来的单个 Option 处理逻辑
+
+  // 单个 Option 处理逻辑
   const processOption = ($opt: JQuery<HTMLElement>, $groupHeader?: JQuery<HTMLElement>) => {
     if ($opt.css('display') === 'none') return;
     validOptionCount++;
@@ -44,7 +43,7 @@ const openDropdown = ($select: JQuery<HTMLElement>) => {
     const isSelected = $opt.is(':selected');
     const groupedClass = $groupHeader ? 'grouped' : '';
     const $item = $(`<div class="option-item ${groupedClass} ${isSelected ? 'selected' : ''}">${text}</div>`);
-    // 记录元数据供搜索用
+
     $item.data('type', 'option');
     $item.data('search-text', text.toLowerCase());
     if ($groupHeader) {
@@ -53,11 +52,10 @@ const openDropdown = ($select: JQuery<HTMLElement>) => {
     $item.on('click', e => {
       e.stopPropagation();
       const value = $opt.val() ?? 'undefined';
-      const nativeSelect = $select[0] as HTMLSelectElement; // 这里采用native
+      const nativeSelect = $select[0] as HTMLSelectElement;
       nativeSelect.value = value.toString();
       nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
       nativeSelect.dispatchEvent(new Event('input', { bubbles: true }));
-      //$select.trigger('change');
       $opt.trigger('click');
       closeDropdown();
     });
@@ -65,7 +63,7 @@ const openDropdown = ($select: JQuery<HTMLElement>) => {
     items.push($item);
   };
 
-  // 1. 构建选项列表，支持 optgroup 渲染
+  // 1. 构建选项列表
   $select.children().each((_, child) => {
     const $child = $(child);
     if (child.tagName.toLowerCase() === 'optgroup') {
@@ -88,19 +86,19 @@ const openDropdown = ($select: JQuery<HTMLElement>) => {
   const search = validOptionCount > SEARCH_THRESHOLD;
 
   const $dropdown = $(`<div id="${DROPDOWN_ID}"></div>`);
+  // 阻止下拉框内的所有点击冒泡到 document 触发关闭
+  $dropdown.on('click mousedown touchstart', e => e.stopPropagation());
+
   const $optionsList = $(`<div class="options-list"></div>`);
   const $noResults = $(`<div class="no-results">无结果</div>`);
 
-  //let $searchInput: JQuery<HTMLElement> | undefined;
-
-  // 3. 条件组装 DOM 结构
+  // 2. 组装 DOM
   if (search) {
     const $searchWrapper = $(
       `<div class="search-wrapper"><input type="text" class="search-input" placeholder="搜索…" /></div>`,
     );
     const $searchInput = $searchWrapper.find('input');
 
-    // 搜索过滤逻辑 (仅在有搜索框时绑定)
     $searchInput.on(
       'input',
       debounce((e: any) => {
@@ -116,8 +114,6 @@ const openDropdown = ($select: JQuery<HTMLElement>) => {
           if (!val || itemText.includes(val)) {
             $item.css('display', '');
             somethingsHere = true;
-
-            // 搜索命中时，同步将该选项对应的组标题展示出来
             if (val) {
               const $gh = $item.data('group-header');
               if ($gh) $gh.css('display', '');
@@ -127,93 +123,74 @@ const openDropdown = ($select: JQuery<HTMLElement>) => {
           }
         });
 
-        if (somethingsHere) {
-          $noResults.hide();
-        } else {
-          $noResults.show();
-        }
+        $noResults.toggle(!somethingsHere);
       }, 200),
     );
 
-    $searchInput.on('mousedown click touchstart touchend', e => e.stopPropagation());
     $dropdown.append($searchWrapper);
 
     setTimeout(() => {
       if (isMobile()) return;
-      $searchInput[0].focus();
-      $searchInput.trigger('focus');
-    }, 6);
+      // preventScroll 避免 Firefox 滚动容器
+      $searchInput[0]?.focus({ preventScroll: true });
+    }, 20);
   }
 
   $optionsList.append(items).append($noResults);
   $dropdown.append($optionsList);
-  //$('body').append($dropdown);
 
   const $dialog = $select.closest('dialog');
-  // if ($dialog.length) {
-  //   $dialog.append($dropdown);
-  // } else {
-  //   $('body').append($dropdown);
-  // }
-
-  //const $dialog = $select.closest('dialog');
-  // 提前计算视口相关属性（判断向上还是向下弹出）
   const rect = $select[0].getBoundingClientRect();
   const windowHeight = $(window).height() || 0;
   const estimatedMaxHeight = 350;
   const spaceBelow = windowHeight - rect.bottom;
   let top = 0;
   let left = 0;
-  // 4. 定位计算修复
-  if ($dialog.length) {
-    // 场景 A：在 Dialog 内部
-    $dialog.append($dropdown);
 
-    // 必须要 append 之后才能获取真实的 outerHeight
+  // 3. 定位计算
+  if ($dialog.length) {
+    $dialog.append($dropdown);
     const actualHeight = $dropdown.outerHeight() ?? 300;
     const dialogRect = $dialog[0].getBoundingClientRect();
     const dialogScrollTop = $dialog.scrollTop() || 0;
     const dialogScrollLeft = $dialog.scrollLeft() || 0;
-    // 计算 Select 相对于 Dialog 左上角的坐标
+
     const baseTop = rect.top - dialogRect.top + dialogScrollTop;
     const baseLeft = rect.left - dialogRect.left + dialogScrollLeft;
     if (spaceBelow < estimatedMaxHeight && rect.top > estimatedMaxHeight) {
-      top = baseTop - actualHeight - 4; // 向上弹出
+      top = baseTop - actualHeight - 4;
     } else {
-      top = baseTop + rect.height + 4; // 向下弹出
+      top = baseTop + rect.height + 4;
     }
     left = Math.max(4, baseLeft);
   } else {
-    // 场景 B：在普通的 Body 内部
     $('body').append($dropdown);
-
     const actualHeight = $dropdown.outerHeight() ?? 300;
     const scrollTop = $(window).scrollTop() || 0;
     const scrollLeft = $(window).scrollLeft() || 0;
     if (spaceBelow < estimatedMaxHeight && rect.top > estimatedMaxHeight) {
-      top = rect.top + scrollTop - actualHeight - 4; // 向上弹出
+      top = rect.top + scrollTop - actualHeight - 4;
     } else {
-      top = rect.bottom + scrollTop + 4; // 向下弹出
+      top = rect.bottom + scrollTop + 4;
     }
     left = Math.max(4, rect.left + scrollLeft);
   }
 
   $dropdown.css({
-    top: top + 'px',
-    left: left + 'px',
-    minWidth: Math.max(rect.width, 200) + 'px',
+    top: `${top}px`,
+    left: `${left}px`,
+    minWidth: `${Math.max(rect.width, 200)}px`,
   });
 
   setTimeout(() => {
     const $selectedItem = $optionsList.find('.selected');
     if ($selectedItem.length) {
-      $optionsList.scrollTop($selectedItem[0].offsetTop - $optionsList.height()! / 2); //滚一滚
+      $optionsList.scrollTop($selectedItem[0].offsetTop - $optionsList.height()! / 2);
     }
-  }, 7); //依旧7是最完美的数字
+  }, 10);
 };
 
 const handleSelectTrigger = (e: JQuery.TriggeredEvent) => {
-  // 确保是左键
   if (e.button !== 0) return;
   const target = e.currentTarget as HTMLElement;
   const $select = $(target);
@@ -221,57 +198,59 @@ const handleSelectTrigger = (e: JQuery.TriggeredEvent) => {
   e.preventDefault();
   e.stopPropagation();
 
-  // 聚焦（为了保持键盘操作连贯性）
-  //target.focus();
   const isActive = $select.hasClass(ACTIVE_CLASS);
-  if (isActive) {
-    closeDropdown();
-    return;
-  }
   closeDropdown();
-  openDropdown($select);
+  if (!isActive) {
+    openDropdown($select);
+  }
 };
 
-// 使用事件委托
 const init = () => {
   injectGlobalStyles();
-  const targetDoc = window.parent.document || document;
+  let targetDoc: Document = document;
+  try {
+    if (window.parent && window.parent.document) {
+      targetDoc = window.parent.document;
+    }
+  } catch (_) {
+    // 忽略跨域 parent 访问限制
+  }
 
-  //不是这部分代码干的
+  // 绑定原生 select 触发
   $(targetDoc).on(`mousedown.${EVENT_NAMESPACE}`, 'select:not([multiple])', handleSelectTrigger);
 
   $(targetDoc).on(`click.${EVENT_NAMESPACE}`, 'select:not([multiple])', e => {
     e.preventDefault();
-    // 如果 mousedown 没触发（极少见），可以在这里补救，但通常只需 preventDefault
   });
 
-  // 键盘事件也可以委托
   $(targetDoc).on(`keydown.${EVENT_NAMESPACE}`, 'select:not([multiple])', function (e) {
-    const $select = $(this);
     if (e.key === ' ' || e.key === 'Enter') {
       e.preventDefault();
       e.stopPropagation();
+      const $select = $(this);
       const isActive = $select.hasClass(ACTIVE_CLASS);
       closeDropdown();
       if (!isActive) openDropdown($select);
     }
   });
 
+  // 修复 3：精准判断点击外部关闭逻辑
   $(targetDoc).on(`click.${EVENT_NAMESPACE}`, e => {
-    //console.log((e.target as any).closest('select')?.length);
-    if ((e.target as any).closest('select')?.length === undefined) closeDropdown();
+    const $target = $(e.target);
+    // 如果点击的不是 select 且不是我们自定义的下拉菜单内部，则关闭
+    if (!$target.closest(`select, #${DROPDOWN_ID}`).length) {
+      closeDropdown();
+    }
   });
 
   $(window).on('pagehide', () => {
     closeDropdown();
     $(`#${STYLE_ID}`).remove();
     $(targetDoc).off(`.${EVENT_NAMESPACE}`);
-
     $(`.${ACTIVE_CLASS}`).removeClass(ACTIVE_CLASS);
   });
 
   const app = createApp(view).use(createPinia());
-
   const $app = createScriptIdDiv().appendTo('#extensions_settings2');
   app.mount($app[0]);
 

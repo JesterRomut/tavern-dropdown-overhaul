@@ -6,6 +6,9 @@ import StartTooltip from './StartTooltip.vue';
 import { vTooltip } from './tooltip';
 import { changeGreeting } from './util';
 
+// TODO:标签排序
+// TODO:给开场加上内部辨识符
+
 const PATH_TAGSTATES = 'OZ.TagStates';
 const PATH_SEARCHQUERY = 'OZ.SearchQuery';
 const PATH_FAVORITES = 'OZ.Favorites';

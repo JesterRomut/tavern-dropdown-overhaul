@@ -2,7 +2,7 @@ export const ACTIVE_CLASS = 'k3rn-dropdown-active';
 export const DROPDOWN_ID = 'k3rn-dropdown-global';
 export const STYLE_ID = `k3rn-dropdown-overhaul`;
 export const EVENT_NAMESPACE = 'k3rn-dropdown-overhaul';
-export const SCROLL_NAMESPACE = 'k3rn-dropdown-scroll';
+// export const SCROLL_NAMESPACE = 'k3rn-dropdown-scroll';
 
 export const SEARCH_THRESHOLD = 7; // 7是完美的数字哦 阿门
 
