@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { changeGreeting } from '../OZ/util';
+import { changeGreeting } from '../shared/util';
 </script>
 <template>
   <main>

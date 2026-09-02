@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { starts } from '../shared/starts';
 import StartsBrowser from '../shared/StartsBrowser.vue';
-import { vTooltip } from '../shared/tooltip';
 </script>
 
 <template>
   <main>
-    <p>作者@Kernschmelze。OZ，只是一个因特异功能实验室倒闭而出来混饭吃的超能力者。</p>
-    <p>“大家早就不需要超能力者了。有了计算机和互联网，谁还需要被折弯的勺子和被撬开的锁呢？”</p>
+    <p>作者@Kernschmelze。</p>
+    <p>巴别塔垮塌时，神让人类失去了共同的语言……但这次，连物种也一起打乱了？！</p>
     <section>
       <h3><i class="fa-solid fa-hamsa"></i> 开场一览</h3>
       <StartsBrowser />
@@ -17,38 +16,29 @@ import { vTooltip } from '../shared/tooltip';
       >，也可快速跳转开场。
     </p>
     <p>
-      游玩出身同一实验室的开局时，将user命名为任意四字数学家名（如希尔伯特、拉格朗日、斐波那契）或填写user设定以达到最佳游玩效果。
-    </p>
-    <p>
       非自用的二改（任何修改）都需授权。二传需标明作者及原帖
       <br />
       商业化禁止
     </p>
     <footer>
-      <h1>OZ</h1>
-      <h2>- In my dreams I'm beautiful... and bad. -</h2>
+      <!-- <h1>Angel after Angel</h1> -->
+      <h2>- Angel after angel -</h2>
     </footer>
   </main>
 </template>
-<script lang="ts">
-export default {
-  directives: {
-    tooltip: vTooltip,
-  },
-};
-</script>
+
 <style lang="scss">
 @use '../shared/tooltip.scss';
 @import url('data:text/css,%40font-face%7Bfont-family%3A%22ZSFT-685%22%3Bsrc%3Aurl(%22https%3A%2F%2Ffontsapi.zeoseven.com%2F685%2Fmain.woff2%22)%20format(%22woff2%22)%3Bfont-style%3Anormal%3Bfont-weight%3A400%3Bfont-display%3Aswap%3B%7D');
 @import url('data:text/css,%40font-face%7Bfont-family%3A%22ZSFT-651%22%3Bsrc%3Aurl(%22https%3A%2F%2Ffontsapi.zeoseven.com%2F651%2Fitalic.woff2%22)%20format(%22woff2%22)%3Bfont-style%3Aitalic%3Bfont-weight%3A100%20900%3Bfont-display%3Aswap%3B%7D%40font-face%7Bfont-family%3A%22ZSFT-651%22%3Bsrc%3Aurl(%22https%3A%2F%2Ffontsapi.zeoseven.com%2F651%2Fmain.woff2%22)%20format(%22woff2%22)%3Bfont-style%3Anormal%3Bfont-weight%3A100%20900%3Bfont-display%3Aswap%3B%7D');
 :root {
-  --oz-highlight: mediumpurple;
+  --oz-highlight: salmon;
 }
 main {
   /* background: linear-gradient(160deg, rgba(45, 45, 45, 0.75), rgba(35, 35, 35, 0.85)); */
   background-image:
     linear-gradient(122deg, rgb(10, 10, 10), rgba(35, 35, 35, 0.85)),
-    url('https://cdn.jsdelivr.net/gh/JesterRomut/tavern-resources@main/character/OZ/cover_background.png');
+    url('https://cdn.jsdelivr.net/gh/JesterRomut/tavern-resources@main/character/AngelAfterAngel/cover_background.png');
   background-size: cover;
   background-position: center;
   border-radius: 4px;
@@ -65,11 +55,11 @@ main {
     text-align: center;
   }
 
-  > footer h1 {
-    font-family: 'ZSFT-685';
-    font-weight: normal;
-    font-size: 1.6rem;
-  }
+  // > footer h1 {
+  //   font-family: 'ZSFT-685';
+  //   font-weight: normal;
+  //   font-size: 1.6rem;
+  // }
 
   > footer h2 {
     font-family: 'ZSFT-651';
