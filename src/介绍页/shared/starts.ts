@@ -26,9 +26,15 @@ export interface Start {
   name: string;
   tags: Set<string>;
   desc?: string;
+  uid?: string;
 }
-function start(name: string, tags: Array<string> = [], desc: string | undefined = undefined): Start {
-  return { id: -1, name, tags: new Set(tags), desc };
+function start(
+  name: string,
+  tags: Array<string> = [],
+  desc: string | undefined = undefined,
+  uid: string | undefined = undefined,
+): Start {
+  return { id: -1, name, tags: new Set(tags), desc, uid };
 }
 
 type RawStarts = z.infer<typeof RawStarts>;
@@ -37,6 +43,7 @@ const RawStarts = z.array(
     name: z.string(),
     tags: z.array(z.string()),
     desc: z.optional(z.string()),
+    uid: z.optional(z.string()),
   }),
 );
 // function NSFWstart(name: string, tags: Array<string> = []) {
@@ -51,7 +58,7 @@ function _main() {
     const varStartsRaw: RawStarts = RawStarts.parse(_.get(variables, '介绍页.开场', {}));
     // console.log(starts);
     _.forEach(varStartsRaw, obj => {
-      starts.push(start(obj.name, obj.tags, obj.desc));
+      starts.push(start(obj.name, obj.tags, obj.desc, obj.uid));
     });
   } catch (e) {
     console.error('OZ前端在加载开场列表时错误！是不是乱动角色卡变量了？：', e);

@@ -9,7 +9,7 @@ import StartsBrowser from '../shared/StartsBrowser.vue';
     <p>巴别塔垮塌时，神让人类失去了共同的语言……但这次，连物种也一起打乱了？！</p>
     <section>
       <h3><i class="fa-solid fa-hamsa"></i> 开场一览</h3>
-      <StartsBrowser />
+      <StartsBrowser path="AngelAfterAngel" />
     </section>
     <p>
       除单击跳转外，新版酒馆点击右下角箭头下的<code>1/{{ starts.length + 1 }}</code

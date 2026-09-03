@@ -10,7 +10,7 @@ import { vTooltip } from '../shared/tooltip';
     <p>“大家早就不需要超能力者了。有了计算机和互联网，谁还需要被折弯的勺子和被撬开的锁呢？”</p>
     <section>
       <h3><i class="fa-solid fa-hamsa"></i> 开场一览</h3>
-      <StartsBrowser />
+      <StartsBrowser path="OZ" />
     </section>
     <p>
       除单击跳转外，新版酒馆点击右下角箭头下的<code>1/{{ starts.length + 1 }}</code

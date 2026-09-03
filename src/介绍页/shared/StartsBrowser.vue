@@ -9,14 +9,25 @@ import { changeGreeting } from './util';
 // TODO:标签排序
 // TODO:给开场加上内部辨识符
 
-const PATH_TAGSTATES = 'OZ.TagStates';
-const PATH_SEARCHQUERY = 'OZ.SearchQuery';
-const PATH_FAVORITES = 'OZ.Favorites';
-const PATH_FAVORITEONLY = 'OZ.FavoriteFilterState';
+const props = defineProps<{ path: string }>();
 
-function loadFavorites(): number[] {
+const PATH_TAGSTATES = `${props.path}.TagStates`;
+const PATH_SEARCHQUERY = `${props.path}.SearchQuery`;
+const PATH_FAVORITES = `${props.path}.Favorites`;
+const PATH_FAVORITEONLY = `${props.path}.FavoriteFilterState`;
+
+function loadConvertedFavorites(): Set<number | string> {
   const variables = getVariables({ type: 'global' });
-  return _.get(variables, PATH_FAVORITES, []);
+  const fav: (number | string)[] = _.get(variables, PATH_FAVORITES, []);
+
+  return new Set(
+    _.map(fav, value => {
+      if (typeof value !== 'number') return value;
+      const uid = starts[value - 1]?.uid;
+      if (!uid) return value;
+      return uid;
+    }),
+  );
 }
 
 function loadFavoriteOnly(): boolean {
@@ -26,20 +37,20 @@ function loadFavoriteOnly(): boolean {
 
 function loadTagStates(): Record<string, number> {
   const variables = getVariables({ type: 'global' });
-  return { ..._.get(variables, 'OZ.TagStates', {}) };
+  return { ..._.get(variables, PATH_TAGSTATES, {}) };
 }
 
 function loadSearchQuery(): string {
   const variables = getVariables({ type: 'global' });
-  return _.get(variables, 'OZ.SearchQuery', '');
+  return _.get(variables, PATH_SEARCHQUERY, '');
 }
 
 // 4. 更新 saveStates 方法（在其中加入 Favorites 的持久化）
 function saveStates() {
   const rawState = toRaw(tagStates.value);
   const rawQuery = toRaw(searchQuery.value);
-  const rawFavorites = toRaw(favorites.value);
-  const rawFavOnly = toRaw(onlyFavorites.value);
+  const rawFavorites = [...toRaw(favorites.value)];
+  const rawFavOnly = onlyFavorites.value;
   const stateToSave = Object.fromEntries(Object.entries(rawState).filter(([_, value]) => value !== 0));
   const variables = getVariables({ type: 'global' });
   if (
@@ -57,7 +68,7 @@ function saveStates() {
       else _.set(variables, PATH_SEARCHQUERY, rawQuery);
       if (_.isEmpty(rawFavorites)) _.unset(variables, PATH_FAVORITES);
       else _.set(variables, PATH_FAVORITES, rawFavorites);
-      if (rawFavOnly !== true) _.unset(variables, PATH_FAVORITEONLY);
+      if (!rawFavOnly) _.unset(variables, PATH_FAVORITEONLY);
       else _.set(variables, PATH_FAVORITEONLY, rawFavOnly);
       return variables;
     },
@@ -83,17 +94,35 @@ $(window).on('pagehide', () => {
   saveStates();
 });
 
-const favorites = ref<number[]>(loadFavorites());
+const favorites = ref<Set<number | string>>(loadConvertedFavorites());
 const onlyFavorites = ref(loadFavoriteOnly()); // 收藏过滤器开关
 
-const isFavorite = (id: number) => favorites.value.includes(id);
-const toggleFavorite = (id: number) => {
-  const idx = favorites.value.indexOf(id);
-  if (idx > -1) {
-    favorites.value.splice(idx, 1);
-  } else {
-    favorites.value.push(id);
+// function isFavorite(id: number): boolean;
+// function isFavorite(id: string): boolean;
+// function isFavorite(id: number | string){
+
+// }
+const isFavorite = (id: number, uid?: string) => {
+  if (uid) {
+    return favorites.value.has(id) || favorites.value.has(uid);
   }
+  return favorites.value.has(id);
+};
+const toggleFavorite = (id: number, uid?: string) => {
+  if (uid && favorites.value.has(uid)) {
+    favorites.value.delete(uid);
+    return;
+  }
+  if (favorites.value.has(id)) {
+    favorites.value.delete(id);
+    return;
+  }
+  if (uid) {
+    favorites.value.add(uid);
+    return;
+  }
+
+  favorites.value.add(id);
 };
 
 const searchQuery = ref(loadSearchQuery());
@@ -122,7 +151,7 @@ watch(
   },
   { immediate: true },
 );
-watch([tagStates, searchQuery, favorites], debounce(saveStates, 3000), { deep: true });
+watch([tagStates, searchQuery, favorites, onlyFavorites], debounce(saveStates, 3000), { deep: true });
 
 const toggleInclude = (tag: string) => {
   tagStates.value[tag] = tagStates.value[tag] === 1 ? 0 : 1;
@@ -146,7 +175,10 @@ const filteredStarts = computed(() => {
     // 不能包含任何 excludedTags
     const matchExcluded = excludedTags.length === 0 || !excludedTags.some(t => s.tags.has(t));
 
-    const matchFavorite = favorites.value.length > 0 ? !onlyFavorites.value || favorites.value.includes(s.id) : true;
+    const matchFavorite =
+      favorites.value.size > 0
+        ? !onlyFavorites.value || favorites.value.has(s.id) || favorites.value.has(s.uid ?? -1)
+        : true;
     return (matchName || matchDesc) && matchRequired && matchExcluded && matchFavorite;
   });
 });
@@ -187,9 +219,9 @@ function formatTooltip(s: Start) {
     </div>
     <Transition name="bounce">
       <div
-        v-if="favorites.length > 0"
+        v-if="favorites.size > 0"
         class="tag-item fav-filter-btn"
-        :class="{ 'is-active': onlyFavorites, 'is-visible': favorites.length > 0 }"
+        :class="{ 'is-active': onlyFavorites, 'is-visible': favorites.size > 0 }"
         @click="onlyFavorites = !onlyFavorites"
       >
         <i :class="onlyFavorites ? 'fa-solid fa-star' : 'fa-regular fa-star'" title="仅显示收藏"></i></div
@@ -200,7 +232,7 @@ function formatTooltip(s: Start) {
     <li v-tooltip="'此介绍页不会发送给AI：直接发送消息即可。'">
       <div><span>1</span>（自定义开局/本介绍页不会发送给AI）</div>
     </li>
-    <li v-for="s in filteredStarts" :key="s.id" aria-label="button" :class="{ 'is-favorite': isFavorite(s.id) }">
+    <li v-for="s in filteredStarts" :key="s.id" aria-label="button" :class="{ 'is-favorite': isFavorite(s.id, s.uid) }">
       <div v-tooltip="formatTooltip(s)" @click="changeGreeting(s.id)">
         <span>{{ s.id + 1 }}</span>
         <i v-if="s.tags.has('NSFW')"><NSFWIcon /></i>
@@ -208,9 +240,9 @@ function formatTooltip(s: Start) {
       </div>
       <i
         class="favorite"
-        :class="isFavorite(s.id) ? 'fa-solid fa-star' : 'fa-regular fa-star'"
-        :title="isFavorite(s.id) ? '取消收藏' : '添加收藏'"
-        @click.stop="toggleFavorite(s.id)"
+        :class="isFavorite(s.id, s.uid) ? 'fa-solid fa-star' : 'fa-regular fa-star'"
+        :title="isFavorite(s.id, s.uid) ? '取消收藏' : '添加收藏'"
+        @click.stop="toggleFavorite(s.id, s.uid)"
       ></i>
       <!--收藏-->
     </li>
