@@ -1,10 +1,15 @@
 <script setup lang="ts">
 import _, { debounce } from 'lodash';
+import { CDNManager } from './cdnManager';
 import { vTooltip } from './tooltip';
 
-const props = defineProps<{ path: string }>();
+const { path, cdn, manifest } = defineProps<{
+  path: string;
+  cdn: CDNManager;
+  manifest: { repo: string; path: string };
+}>();
 
-const PATH_OPEN = `${props.path}.Open`;
+const PATH_OPEN = `${path}.Open`;
 function loadOpen(): boolean {
   const variables = getVariables({ type: 'global' });
   return _.get(variables, PATH_OPEN, false);
@@ -39,14 +44,8 @@ const AvatarInfo = z.object({
   repo: z.string(),
   path: z.string(),
 });
-
-const REPO = 'JesterRomut/tavern-resources';
-const AVATAR_PATH = 'character/OZ/avatar';
-
-const avatarManifest: AvatarInfo[] = [
-  { name: '旧卡面', desc: '1.4.0之前的卡面…玩喵喵的结合玩的。', repo: REPO, path: `${AVATAR_PATH}/legacy.png` },
-  { name: '浅红半身', desc: '1.4.0版本卡面', repo: REPO, path: `${AVATAR_PATH}/half_life.png` },
-];
+type AvatarManifest = z.infer<typeof AvatarManifest>;
+const AvatarManifest = z.array(AvatarInfo);
 
 // 状态管理
 interface GalleryItem extends AvatarInfo {
@@ -54,35 +53,32 @@ interface GalleryItem extends AvatarInfo {
   rawBlob?: Blob;
   error: boolean;
 }
-const gallery = ref<GalleryItem[]>(
-  avatarManifest.map(item => ({
-    ...item,
-    error: false,
-  })),
-);
-
+const gallery = ref<GalleryItem[]>([]);
+const manifestError: Ref<string | null> = ref(null);
 const pendingAvatarIndex = ref<number | null>(null); // 当前弹出确认框的卡面索引
 const isApplying = ref(false); // 是否正在应用中
-// 获取多源 Blob
-async function resolveFromRepo(repo: string, path: string) {
-  const urls = [
-    `https://fastly.jsdelivr.net/gh/${repo}@main/${path}`,
-    `https://gcore.jsdelivr.net/gh/${repo}@main/${path}`,
-    `https://cdn.jsdelivr.net/gh/${repo}@main/${path}`,
-    `https://testingcf.jsdelivr.net/gh/${repo}@main/${path}`,
-  ];
-  for (const url of urls) {
-    try {
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error(`加载失败:${resp.status}；${resp.statusText}`);
-      return await resp.blob();
-    } catch (e) {
-      console.warn('获取失败:', url);
-    }
+// function getCdnUrls(repo: string, path: string) {
+//   return [
+//     `https://fastly.jsdelivr.net/gh/${repo}@main/${path}`,
+//     `https://gcore.jsdelivr.net/gh/${repo}@main/${path}`,
+//     `https://cdn.jsdelivr.net/gh/${repo}@main/${path}`,
+//     `https://testingcf.jsdelivr.net/gh/${repo}@main/${path}`,
+//   ];
+// }
+// 多源获取 Blob
+async function resolveFromRepo(repo: string, path: string): Promise<Blob | null> {
+  try {
+    // const resp = await cdn.fetch(`gh/${repo}@latest/${path}`);
+    const resp = await cdn.fetchGitHub(repo, path);
+    if (!resp.ok) throw new Error(`加载失败:${resp.status}；${resp.statusText}`);
+    return await resp.blob();
+  } catch (e) {
+    console.warn('获取 Blob 失败:', repo, path);
   }
+
   return null;
 }
-// 预加载画廊图片
+
 async function loadGalleryImages() {
   for (const item of gallery.value) {
     if (item.blobUrl) continue;
@@ -101,13 +97,45 @@ async function loadGalleryImages() {
     }
   }
 }
-// 触发确认框
+
+async function initGallery() {
+  if (gallery.value.length > 0 && !manifestError.value) {
+    loadGalleryImages();
+    return;
+  }
+  manifestError.value = null;
+
+  // const resp = await cdn.fetch('gh/JesterRomut/tavern-resources@main/character/OZ/avatar/index.json');
+  const resp = await cdn.fetchGitHub(manifest.repo, manifest.path);
+  if (!resp.ok) {
+    manifestError.value = `加载失败：${resp.status}${resp.statusText ? ' - ' + resp.statusText : ''}`;
+    return;
+  }
+  const rawJson = await resp.json();
+
+  // Zod 类型校验
+  const parsed = AvatarManifest.safeParse(rawJson);
+  if (!parsed.success) {
+    manifestError.value = `类型校验失败：需要更新角色卡。`;
+    return;
+  }
+  const manifes = parsed.data;
+
+  gallery.value = manifes.map(item => ({
+    ...item,
+    loading: false,
+    error: false,
+  }));
+
+  loadGalleryImages();
+}
+
 function selectAvatar(index: number) {
   const target = gallery.value[index];
   if (!target.rawBlob || isApplying.value) return;
   pendingAvatarIndex.value = index;
 }
-// 确认切换头像
+
 async function confirmApplyAvatar(index: number) {
   const target = gallery.value[index];
   if (!target.rawBlob) return;
@@ -134,13 +162,52 @@ async function updateCharacterAvatar(blob: Blob) {
   });
 }
 
-onMounted(() => {
-  if (open.value) {
-    loadGalleryImages();
+const online = ref(window.navigator.onLine);
+
+async function checkConnectivity() {
+  if (!window.navigator.onLine) {
+    online.value = false;
+    return;
   }
+  cdn.reset();
+  try {
+    // const ver = await cdn.fetchLatestVersion(manifest.repo);
+    // // const host = await cdn.getFastestHost();
+    // online.value = ver !== null;
+
+    // console.log(ver);
+    // if (!ver) {
+    const host = await cdn.getFastestHost();
+    online.value = host !== null;
+  } catch {
+    online.value = false;
+  }
+
+  if (online.value && open.value) {
+    initGallery();
+  }
+}
+
+const handleOnline = () => {
+  checkConnectivity();
+};
+
+const handleOffline = () => {
+  online.value = false;
+  cdn.reset();
+};
+
+onMounted(async () => {
+  window.addEventListener('online', handleOnline);
+  window.addEventListener('offline', handleOffline);
+
+  await checkConnectivity();
 });
 
 onUnmounted(() => {
+  window.removeEventListener('online', handleOnline);
+  window.removeEventListener('offline', handleOffline);
+
   gallery.value.forEach(item => {
     if (item.blobUrl) URL.revokeObjectURL(item.blobUrl);
   });
@@ -154,14 +221,19 @@ export default {
 };
 </script>
 <template>
-  <section class="oz-section">
+  <section v-if="!online" class="oz-section disabled" aria-disabled @click="checkConnectivity">
+    <h3>
+      <span><i class="fa-solid fa-image-portrait"></i> 卡面切换</span><u>离线模式不可用</u>
+    </h3>
+  </section>
+  <section v-else class="oz-section">
     <h3
       :class="{ 'is-open': open }"
       @click="
         () => {
           open = !open;
           if (open) {
-            loadGalleryImages();
+            initGallery();
           } else {
             pendingAvatarIndex = null;
           }
@@ -172,7 +244,19 @@ export default {
     </h3>
     <Transition name="slide-fade">
       <div v-if="open">
-        <div class="avatar-gallery">
+        <!-- Manifest 清单加载失败 -->
+        <div v-if="manifestError !== null" class="manifest-error" @click="initGallery">
+          <p>
+            <i class="fa-regular fa-moon"></i>
+            <span>未能连接维度X……点击重试</span>
+          </p>
+          <p>{{ manifestError }}</p>
+        </div>
+        <div v-else-if="gallery.length <= 0" class="manifest-loading">
+          <i class="fa-solid fa-spinner fa-spin"></i>
+          <span>正在获取卡面列表...</span>
+        </div>
+        <div v-else class="avatar-gallery">
           <div
             v-for="(item, idx) in gallery"
             :key="item.path"
@@ -181,20 +265,19 @@ export default {
             :class="{ active: pendingAvatarIndex === idx }"
             @click="selectAvatar(idx)"
           >
-            <!-- 骨架/加载中 -->
-            <div v-if="!item.blobUrl" class="image-placeholder">
-              <i class="fa-solid fa-spinner fa-spin"></i>
-            </div>
-
             <!-- 加载失败 -->
             <div
-              v-else-if="item.error"
+              v-if="item.error"
               v-tooltip="'点击重试'"
               class="image-placeholder error"
               @click.stop="loadGalleryImages"
             >
               <i class="fa-solid fa-triangle-exclamation"></i>
               <span>加载失败</span>
+            </div>
+            <!-- 骨架/加载中 -->
+            <div v-else-if="!item.blobUrl" class="image-placeholder">
+              <i class="fa-solid fa-spinner fa-spin"></i>
             </div>
             <!-- 图片正常展示 -->
             <div v-else class="image-wrapper">
@@ -229,6 +312,30 @@ export default {
 <style lang="scss">
 @use 'section.scss';
 @use 'transition.scss';
+
+.disabled {
+  color: #888;
+  h3 {
+    align-items: center;
+  }
+  u {
+    font-size: 0.8rem;
+    display: contents;
+    font-weight: lighter;
+  }
+}
+
+.manifest-error,
+.manifest-loading {
+  color: #888;
+  font-style: italic;
+  padding-left: 0.5rem;
+  padding-top: 0.5rem;
+
+  .fa-regular {
+    align-self: baseline;
+  }
+}
 
 .avatar-gallery {
   display: grid;

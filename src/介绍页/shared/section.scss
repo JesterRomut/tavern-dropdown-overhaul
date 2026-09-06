@@ -34,6 +34,7 @@
   h3 {
     @extend .noselect;
     font-weight: bold;
+    display: flex;
     &,
     * {
       transition: all 0.3s ease-in-out;
@@ -50,7 +51,6 @@
       transform: scale(0.9);
     }
   }
-
 }
 .noselect {
   user-select: none;

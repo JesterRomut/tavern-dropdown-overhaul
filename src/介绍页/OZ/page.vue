@@ -1,8 +1,31 @@
 <script setup lang="ts">
 import AvatarSwitcher from '../shared/AvatarSwitcher.vue';
+import { CDNManager } from '../shared/cdnManager';
 import { starts } from '../shared/starts';
 import StartsBrowser from '../shared/StartsBrowser.vue';
 import { vTooltip } from '../shared/tooltip';
+
+const cdn = new CDNManager();
+// const blobUrl: Ref<string | null> = ref(null)
+
+// async function loadBackground(){
+//     if (blobUrl.value) return;
+//     try {
+//           const resp = await cdn.fetch(`gh/JesterRomut/tavern-resources@main/character/OZ/cover_background.png`);
+//     if (!resp.ok) throw new Error(`加载失败:${resp.status}；${resp.statusText}`);
+//       const blob = await resp.blob();
+//       if (blob) {
+//         blobUrl.value = URL.createObjectURL(blob);
+//       }
+//     }catch{
+//       console.error('OZ: 背景图加载失败')
+//     }
+
+// }
+
+// onMounted(() => {
+//   loadBackground();
+// })
 </script>
 
 <template>
@@ -11,7 +34,11 @@ import { vTooltip } from '../shared/tooltip';
     <p>“大家早就不需要超能力者了。有了计算机和互联网，谁还需要被折弯的勺子和被撬开的锁呢？”</p>
 
     <StartsBrowser path="OZ" />
-    <AvatarSwitcher path="OZ.Avatar"></AvatarSwitcher>
+    <AvatarSwitcher
+      path="OZ.Avatar"
+      :cdn="cdn"
+      :manifest="{ repo: 'JesterRomut/tavern-resources', path: 'character/OZ/avatar/index.json' }"
+    ></AvatarSwitcher>
     <p>
       除单击跳转外，新版酒馆点击右下角箭头下的<code>1/{{ starts.length + 1 }}</code
       >，也可快速跳转开场。
