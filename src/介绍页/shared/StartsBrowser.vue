@@ -16,6 +16,8 @@ const PATH_SEARCHQUERY = `${props.path}.SearchQuery`;
 const PATH_FAVORITES = `${props.path}.Favorites`;
 const PATH_FAVORITEONLY = `${props.path}.FavoriteFilterState`;
 
+const PATH_OPEN = `${props.path}.Open`;
+
 function loadConvertedFavorites(): Set<number | string> {
   const variables = getVariables({ type: 'global' });
   const fav: (number | string)[] = _.get(variables, PATH_FAVORITES, []);
@@ -45,19 +47,26 @@ function loadSearchQuery(): string {
   return _.get(variables, PATH_SEARCHQUERY, '');
 }
 
+function loadOpen(): boolean {
+  const variables = getVariables({ type: 'global' });
+  return _.get(variables, PATH_OPEN, true);
+}
+
 // 4. 更新 saveStates 方法（在其中加入 Favorites 的持久化）
 function saveStates() {
   const rawState = toRaw(tagStates.value);
   const rawQuery = toRaw(searchQuery.value);
   const rawFavorites = [...toRaw(favorites.value)];
   const rawFavOnly = onlyFavorites.value;
+  const rawOpen = open.value;
   const stateToSave = Object.fromEntries(Object.entries(rawState).filter(([_, value]) => value !== 0));
   const variables = getVariables({ type: 'global' });
   if (
     _.isEqual(_.get(variables, PATH_TAGSTATES, {}), stateToSave) &&
     _.isEqual(_.get(variables, PATH_SEARCHQUERY, ''), rawQuery) &&
     _.isEqual(_.get(variables, PATH_FAVORITES, []), rawFavorites) &&
-    _.isEqual(_.get(variables, PATH_FAVORITEONLY, false), rawFavOnly)
+    _.isEqual(_.get(variables, PATH_FAVORITEONLY, false), rawFavOnly) &&
+    _.isEqual(_.get(variables, PATH_OPEN, true), rawOpen)
   )
     return;
   updateVariablesWith(
@@ -70,6 +79,8 @@ function saveStates() {
       else _.set(variables, PATH_FAVORITES, rawFavorites);
       if (!rawFavOnly) _.unset(variables, PATH_FAVORITEONLY);
       else _.set(variables, PATH_FAVORITEONLY, rawFavOnly);
+      if (rawOpen) _.unset(variables, PATH_OPEN);
+      else _.set(variables, PATH_OPEN, rawOpen);
       return variables;
     },
     { type: 'global' },
@@ -89,10 +100,6 @@ function saveStates() {
   //   deleteVariable(PATH_FAVORITEONLY, { type: 'global' });
   // }
 }
-
-$(window).on('pagehide', () => {
-  saveStates();
-});
 
 const favorites = ref<Set<number | string>>(loadConvertedFavorites());
 const onlyFavorites = ref(loadFavoriteOnly()); // 收藏过滤器开关
@@ -151,7 +158,14 @@ watch(
   },
   { immediate: true },
 );
-watch([tagStates, searchQuery, favorites, onlyFavorites], debounce(saveStates, 3000), { deep: true });
+
+const open = ref(loadOpen());
+
+watch([tagStates, searchQuery, favorites, onlyFavorites, open], debounce(saveStates, 3000), { deep: true });
+
+$(window).on('pagehide', () => {
+  saveStates();
+});
 
 const toggleInclude = (tag: string) => {
   tagStates.value[tag] = tagStates.value[tag] === 1 ? 0 : 1;
@@ -193,63 +207,76 @@ function formatTooltip(s: Start) {
 </script>
 
 <template>
-  <div class="search-bar">
-    <input v-model="searchQuery" type="text" placeholder="搜索开场..." />
-  </div>
+  <section class="oz-section">
+    <h3 :class="{ 'is-open': open }" @click="open = !open">
+      <span><i class="fa-solid fa-hamsa"></i> 开场一览</span>
+    </h3>
+    <Transition name="slide-fade">
+      <div v-if="open == true">
+        <div class="search-bar">
+          <input v-model="searchQuery" type="text" placeholder="搜索开场..." />
+        </div>
 
-  <div class="tags-root">
-    <div>
-      <div
-        v-for="tag in allTags"
-        :key="tag"
-        class="tag-item"
-        :class="[{ 'is-included': tagStates[tag] === 1, 'is-excluded': tagStates[tag] === -1 }]"
-      >
-        <!-- 左侧：点击切换包含状态 -->
-        <div class="tag-main" @click="toggleInclude(tag)">
-          <i v-if="tagStates[tag] === 1" class="fa-solid fa-circle-check"></i>
-          <i v-else-if="tagStates[tag] === -1" class="fa-solid fa-circle-xmark"></i>
-          <span>{{ tag }}</span>
+        <div class="tags-root">
+          <div>
+            <div
+              v-for="tag in allTags"
+              :key="tag"
+              class="tag-item"
+              :class="[{ 'is-included': tagStates[tag] === 1, 'is-excluded': tagStates[tag] === -1 }]"
+            >
+              <!-- 左侧：点击切换包含状态 -->
+              <div class="tag-main" @click="toggleInclude(tag)">
+                <i v-if="tagStates[tag] === 1" class="fa-solid fa-circle-check"></i>
+                <i v-else-if="tagStates[tag] === -1" class="fa-solid fa-circle-xmark"></i>
+                <span>{{ tag }}</span>
+              </div>
+              <!-- 右侧：减号，点击切换排除状态 -->
+              <div class="tag-exclude-btn" title="排除此标签" @click.stop="toggleExclude(tag)">
+                <i class="fa-solid fa-minus"></i>
+              </div>
+            </div>
+          </div>
+          <Transition name="bounce">
+            <div
+              v-if="favorites.size > 0"
+              class="tag-item fav-filter-btn"
+              :class="{ 'is-active': onlyFavorites, 'is-visible': favorites.size > 0 }"
+              @click="onlyFavorites = !onlyFavorites"
+            >
+              <i :class="onlyFavorites ? 'fa-solid fa-star' : 'fa-regular fa-star'" title="仅显示收藏"></i></div
+          ></Transition>
         </div>
-        <!-- 右侧：减号，点击切换排除状态 -->
-        <div class="tag-exclude-btn" title="排除此标签" @click.stop="toggleExclude(tag)">
-          <i class="fa-solid fa-minus"></i>
-        </div>
-      </div>
-    </div>
-    <Transition name="bounce">
-      <div
-        v-if="favorites.size > 0"
-        class="tag-item fav-filter-btn"
-        :class="{ 'is-active': onlyFavorites, 'is-visible': favorites.size > 0 }"
-        @click="onlyFavorites = !onlyFavorites"
-      >
-        <i :class="onlyFavorites ? 'fa-solid fa-star' : 'fa-regular fa-star'" title="仅显示收藏"></i></div
+
+        <ul>
+          <li v-tooltip="'此介绍页不会发送给AI：直接发送消息即可。'">
+            <div><span>1</span>（自定义开局/本介绍页不会发送给AI）</div>
+          </li>
+          <li
+            v-for="s in filteredStarts"
+            :key="s.id"
+            aria-label="button"
+            :class="{ 'is-favorite': isFavorite(s.id, s.uid) }"
+          >
+            <div v-tooltip="formatTooltip(s)" @click="changeGreeting(s.id)">
+              <span>{{ s.id + 1 }}</span>
+              <i v-if="s.tags.has('NSFW')"><NSFWIcon /></i>
+              {{ s.name }}
+            </div>
+            <i
+              class="favorite"
+              :class="isFavorite(s.id, s.uid) ? 'fa-solid fa-star' : 'fa-regular fa-star'"
+              :title="isFavorite(s.id, s.uid) ? '取消收藏' : '添加收藏'"
+              @click.stop="toggleFavorite(s.id, s.uid)"
+            ></i>
+            <!--收藏-->
+          </li>
+          <li v-if="filteredStarts.length === 0" class="empty-moon">
+            <div>月球的背面空荡荡...<i class="fa-regular fa-moon"></i></div>
+          </li>
+        </ul></div
     ></Transition>
-  </div>
-
-  <ul>
-    <li v-tooltip="'此介绍页不会发送给AI：直接发送消息即可。'">
-      <div><span>1</span>（自定义开局/本介绍页不会发送给AI）</div>
-    </li>
-    <li v-for="s in filteredStarts" :key="s.id" aria-label="button" :class="{ 'is-favorite': isFavorite(s.id, s.uid) }">
-      <div v-tooltip="formatTooltip(s)" @click="changeGreeting(s.id)">
-        <span>{{ s.id + 1 }}</span>
-        <i v-if="s.tags.has('NSFW')"><NSFWIcon /></i>
-        {{ s.name }}
-      </div>
-      <i
-        class="favorite"
-        :class="isFavorite(s.id, s.uid) ? 'fa-solid fa-star' : 'fa-regular fa-star'"
-        :title="isFavorite(s.id, s.uid) ? '取消收藏' : '添加收藏'"
-        @click.stop="toggleFavorite(s.id, s.uid)"
-      ></i>
-      <!--收藏-->
-    </li>
-    <li v-if="filteredStarts.length === 0" class="empty-moon">
-      <div>月球的背面空荡荡...<i class="fa-regular fa-moon"></i></div>
-    </li>
-  </ul>
+  </section>
 </template>
 <script lang="ts">
 export default {
@@ -259,23 +286,8 @@ export default {
 };
 </script>
 <style lang="scss">
-.bounce-enter-active {
-  animation: bounce-in 0.5s;
-}
-.bounce-leave-active {
-  animation: bounce-in 0.5s reverse;
-}
-@keyframes bounce-in {
-  0% {
-    transform: scale(0);
-  }
-  50% {
-    transform: scale(1.25);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
+@use 'section.scss';
+@use 'transition.scss';
 
 /* 搜索栏样式 */
 .search-bar {
@@ -419,19 +431,9 @@ li.empty-moon {
     align-self: baseline;
   }
 }
-section {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: inherit;
-  box-shadow:
-    0 0 0 1px #484a4c,
-    0 1px 3px 0 rgb(0 0 0 / 0.1),
-    0 1px 2px -1px rgb(0 0 0 / 0.1);
-  margin: 1rem 0;
-  padding-top: 1rem;
-  padding-bottom: 1rem;
-
+.oz-section {
   ul {
-    height: 20rem;
+    max-height: 20rem;
     overflow-x: auto;
 
     scrollbar-gutter: stable;
@@ -459,14 +461,9 @@ section {
       // display: flex;
       // justify-content: flex-start;
       // align-items: baseline;
+      @extend .noselect;
       gap: 4px;
       cursor: pointer;
-
-      user-select: none;
-      -moz-user-select: none;
-      -khtml-user-select: none;
-      -webkit-user-select: none;
-      -o-user-select: none;
 
       transition: 0.3s;
 
@@ -543,28 +540,6 @@ section {
     > li:first-of-type {
       cursor: not-allowed;
     }
-  }
-
-  ::-webkit-scrollbar {
-    width: 6px;
-    @media screen and (max-width: 600px) {
-      width: 4px;
-    }
-    height: 6px; /* 横向滚动条高度变细 */
-    @media screen and (max-width: 600px) {
-      height: 4px;
-    }
-  }
-
-  ::-webkit-scrollbar-track {
-    border-radius: 8px;
-    background-color: rgba(0, 0, 0, 0.3);
-    border: 1px solid #666;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    border-radius: 8px;
-    background-color: #666;
   }
 }
 </style>

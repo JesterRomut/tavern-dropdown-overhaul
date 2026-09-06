@@ -1,0 +1,61 @@
+.oz-section {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: inherit;
+  box-shadow:
+    0 0 0 1px #484a4c,
+    0 1px 3px 0 rgb(0 0 0 / 0.1),
+    0 1px 2px -1px rgb(0 0 0 / 0.1);
+  margin: 1rem 0;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    @media screen and (max-width: 600px) {
+      width: 4px;
+    }
+    height: 6px; /* 横向滚动条高度变细 */
+    @media screen and (max-width: 600px) {
+      height: 4px;
+    }
+  }
+
+  ::-webkit-scrollbar-track {
+    border-radius: 8px;
+    background-color: rgba(0, 0, 0, 0.3);
+    border: 1px solid #666;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    border-radius: 8px;
+    background-color: #666;
+  }
+
+  h3 {
+    @extend .noselect;
+    font-weight: bold;
+    &,
+    * {
+      transition: all 0.3s ease-in-out;
+    }
+
+    span {
+      display: inline-block;
+      transform-origin: left;
+    }
+  }
+
+  h3:not(.is-open) {
+    > span {
+      transform: scale(0.9);
+    }
+  }
+
+}
+.noselect {
+  user-select: none;
+  -moz-user-select: none;
+  -khtml-user-select: none;
+  -webkit-user-select: none;
+  -o-user-select: none;
+}

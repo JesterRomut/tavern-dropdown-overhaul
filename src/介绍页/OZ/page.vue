@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AvatarSwitcher from '../shared/AvatarSwitcher.vue';
 import { starts } from '../shared/starts';
 import StartsBrowser from '../shared/StartsBrowser.vue';
 import { vTooltip } from '../shared/tooltip';
@@ -8,17 +9,16 @@ import { vTooltip } from '../shared/tooltip';
   <main>
     <p>作者@Kernschmelze。OZ，只是一个因特异功能实验室倒闭而出来混饭吃的超能力者。</p>
     <p>“大家早就不需要超能力者了。有了计算机和互联网，谁还需要被折弯的勺子和被撬开的锁呢？”</p>
-    <section>
-      <h3><i class="fa-solid fa-hamsa"></i> 开场一览</h3>
-      <StartsBrowser path="OZ" />
-    </section>
+
+    <StartsBrowser path="OZ" />
+    <AvatarSwitcher path="OZ.Avatar"></AvatarSwitcher>
     <p>
       除单击跳转外，新版酒馆点击右下角箭头下的<code>1/{{ starts.length + 1 }}</code
       >，也可快速跳转开场。
     </p>
     <p>
       <!-- 希尔伯特、拉格朗日、斐波那契）费迪南德 -->
-      游玩出身同一实验室的开局时，给予user任意四字数学家名作为代号（如埃尔米特、克罗内克、勒文海姆）以达到最佳游玩效果。
+      游玩出身同一实验室的开局时，给予user任意四字数学家名作为代号（如拉格朗日、克罗内克、勒文海姆）以达到最佳游玩效果。
     </p>
     <p>
       非自用的二改（任何修改）都需授权。二传需标明作者及原帖
@@ -89,9 +89,6 @@ code {
   background-color: black;
 }
 
-h3 {
-  font-weight: bold;
-}
 @media screen and (max-width: 600px) {
   :root {
     --main-padding: 0.5rem;

@@ -1,0 +1,33 @@
+.slide-fade-enter-active,
+.slide-fade-leave-active {
+  transition: all 0.3s ease-in-out;
+  * {
+    transition: max-height 0.3s ease-in-out;
+  }
+}
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+  transform: translateY(-20px);
+  opacity: 0;
+  ul {
+    max-height: 0px !important;
+  }
+  overflow: hidden;
+}
+.bounce-enter-active {
+  animation: bounce-in 0.5s;
+}
+.bounce-leave-active {
+  animation: bounce-in 0.5s reverse;
+}
+@keyframes bounce-in {
+  0% {
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
