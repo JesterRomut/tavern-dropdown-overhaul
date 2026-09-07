@@ -34,14 +34,14 @@ main {
   flex-direction: column;
   height: 100%;
   width: 100%;
-  > h3 {
-    font-size: 1.15em;
-    font-weight: bold;
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
+  // > h3 {
+  //   font-size: 1.15em;
+  //   font-weight: bold;
+  //   margin-bottom: 10px;
+  //   display: flex;
+  //   align-items: center;
+  //   gap: 6px;
+  // }
   > section {
     background: rgba(255, 255, 255, 0.06);
     padding: 1rem;
@@ -50,6 +50,7 @@ main {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    font-size: 0.9rem;
     > div:first-of-type {
       code {
         padding: 2px 6px;
@@ -68,7 +69,8 @@ main {
     }
   }
   > footer {
-    background: linear-gradient(180deg, var(--SmartThemeShadowColor), transparent);
+    background: linear-gradient(180deg, var(--SmartThemeShadowColor) 6rem, transparent);
+    background-attachment: fixed;
     // border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
     font-size: 0.95rem;
