@@ -320,7 +320,7 @@ export default {
     </Transition>
   </section>
 </template>
-<style lang="scss">
+<style scoped lang="scss">
 @use 'section.scss';
 @use 'transition.scss';
 
@@ -348,11 +348,31 @@ export default {
   }
 }
 
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+  .avatar-gallery {
+    height: unset;
+    max-height: 0px !important;
+  }
+}
+
+.slide-fade-enter-active,
+.slide-fade-leave-active {
+  .avatar-gallery {
+    height: unset;
+  }
+}
+
 .avatar-gallery {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  @media screen and (max-width: 600px) {
+    grid-template-columns: repeat(auto-fill, minmax(6em, 1fr));
+  }
+  overflow-y: auto;
   gap: 0.5rem;
   padding-top: 1rem;
+  max-height: 20rem;
 }
 .gallery-item {
   position: relative;

@@ -8,19 +8,19 @@ const { localVersion, remoteVersion, changelogText } = defineProps<{
 const html = builtin.renderMarkdown(changelogText);
 </script>
 <template>
-  <main class="update-modal" style="">
+  <main>
     <!-- <h3 style="">
       <span>角色卡更新提示</span>
     </h3> -->
-    <section style="">
+    <section>
       <div>
-        当前版本：<code style="">{{ localVersion }}</code>
+        当前版本：<code>{{ localVersion }}</code>
       </div>
-      <div style="">
-        最新版本：<code style="">{{ remoteVersion }}</code>
+      <div>
+        最新版本：<code>{{ remoteVersion }}</code>
       </div>
     </section>
-    <footer style="" v-html="html"></footer>
+    <footer v-html="html"></footer>
     <!--不能用noscript-->
   </main>
 </template>
@@ -97,6 +97,28 @@ main {
         border-top: 1px solid color-mix(in srgb, var(--SmartThemeQuoteColor) 70%, transparent);
       }
     }
+  }
+
+  &::-webkit-scrollbar {
+    width: 6px;
+    @media screen and (max-width: 600px) {
+      width: 4px;
+    }
+    height: 6px; /* 横向滚动条高度变细 */
+    @media screen and (max-width: 600px) {
+      height: 4px;
+    }
+  }
+
+  &::-webkit-scrollbar-track {
+    border-radius: 8px;
+    background-color: rgba(0, 0, 0, 0.3);
+    // border: 1px solid #666;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    border-radius: 8px;
+    background-color: #666;
   }
 }
 </style>

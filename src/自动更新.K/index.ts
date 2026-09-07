@@ -274,7 +274,7 @@ async function showUpdateModal(
   repoTag?: string,
 ) {
   const app = createApp(UpdateModal, { localVersion, remoteVersion, changelogText }).use(createPinia());
-  const $app = $('<div>').attr('style', `width:100%;height:100%`);
+  const $app = $('<div>').attr('style', `width:100%;height:100%;overflow: hidden;`);
   app.mount($app[0]);
 
   const { destroy } = teleportStyle();
@@ -416,7 +416,7 @@ async function checkUpdate(conf: ValidConfig) {
   }
 }
 
-$(async () => {
+async function init() {
   clearUpdateButton();
 
   const { success, data: conf } = Config.safeParse(getVariables({ type: 'script' }));
@@ -426,10 +426,13 @@ $(async () => {
     return;
   }
 
-  // 角色卡页面重新载入时再次检查
-  eventOn(tavern_events.CHARACTER_PAGE_LOADED, () => {
-    checkUpdate(conf);
-  });
-
   await checkUpdate(conf);
+}
+
+$(async () => {
+  // 角色卡页面重新载入时再次检查
+  eventOn(tavern_events.CHARACTER_PAGE_LOADED, async () => {
+    await init();
+  });
+  await init();
 });

@@ -285,7 +285,7 @@ export default {
   },
 };
 </script>
-<style lang="scss">
+<style scoped lang="scss">
 @use 'section.scss';
 @use 'transition.scss';
 
@@ -432,7 +432,22 @@ li.empty-moon {
   }
 }
 .oz-section {
+  .slide-fade-enter-from,
+  .slide-fade-leave-to {
+    ul {
+      height: unset;
+      max-height: 0px !important;
+    }
+  }
+
+  .slide-fade-enter-active,
+  .slide-fade-leave-active {
+    ul {
+      height: unset;
+    }
+  }
   ul {
+    height: 20rem;
     max-height: 20rem;
     overflow-x: auto;
 
