@@ -1,7 +1,8 @@
 import { CDNManager } from '@util/cdn';
+import { teleportStyle } from '@util/script';
 import { compare, validate } from 'compare-versions';
-import _ from 'lodash';
 import toastr from 'toastr';
+import UpdateModal from './updateModal.vue';
 
 type Config = z.infer<typeof Config>;
 const Config = z
@@ -126,17 +127,17 @@ async function performUpdate(conf: ValidConfig, charName: string, remoteVersion:
 
     if (isPng) {
       const blob = await res.blob();
-      // 酒馆助手对于角色卡原生文件（PNG）的导入/更新接口为 importRawCharacter
-      if (typeof importRawCharacter === 'function') {
-        const importRes = await importRawCharacter(charName, blob);
-        if (importRes && !importRes.ok) {
-          throw new Error(`角色卡导入失败 (HTTP ${importRes.status})`);
-        }
+
+      const importRes = await importRawCharacter(charName, blob);
+      if (importRes && !importRes.ok) {
+        throw new Error(`角色卡导入失败 (HTTP ${importRes.status})`);
       }
     } else {
       const cardData = await res.json();
       await replaceCharacter(charName, cardData);
     }
+
+    await replaceCharacter(charName, { version: remoteVersion });
 
     toastr.success(`角色卡已成功更新至 ${remoteVersion}！`, '更新成功');
     replaceScriptButtons([]);
@@ -168,24 +169,18 @@ async function showUpdateModal(
   remoteVersion: string,
   changelogText: string,
 ) {
-  const renderedHtml = builtin.renderMarkdown(changelogText);
-  const modalContent = `
-    <div class="update-modal" style="font-family: inherit; line-height: 1.6; max-height: 60vh; overflow-y: auto; text-align: left; padding: 6px 10px;">
-      <div style="font-size: 1.15em; font-weight: bold; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
-        <span>角色卡更新提示</span>
-      </div>
-      <div style="background: rgba(255, 255, 255, 0.06); padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;">
-        <div>当前版本：<code style="padding: 2px 6px; border-radius: 4px; background: rgba(0, 0, 0, 0.25);">v${_.escape(localVersion)}</code></div>
-        <div style="color: #4ade80; font-weight: bold;">➔ 最新版本：<code style="padding: 2px 6px; border-radius: 4px; background: rgba(74, 222, 128, 0.15); color: #4ade80;">v${_.escape(remoteVersion)}</code></div>
-      </div>
-      <div style="font-weight: bold; margin-bottom: 8px;">更新日志：</div>
-      <div style="background: rgba(0, 0, 0, 0.15); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 12px; font-size: 0.95em;">
-        ${renderedHtml}
-      </div>
-    </div>
-  `;
+  const app = createApp(UpdateModal, { localVersion, remoteVersion, changelogText }).use(createPinia());
+  const $app = $('<div>').attr('style', `width:100%;height:100%`);
+  app.mount($app[0]);
 
-  const result = await SillyTavern.callGenericPopup(modalContent, SillyTavern.POPUP_TYPE.CONFIRM, '', {
+  const { destroy } = teleportStyle();
+
+  $(window).on('pagehide', () => {
+    app.unmount();
+    $app.remove();
+    destroy();
+  });
+  const result = await SillyTavern.callGenericPopup($app, SillyTavern.POPUP_TYPE.CONFIRM, '', {
     okButton: '更新',
     cancelButton: '取消',
     wider: true,
@@ -237,11 +232,11 @@ async function checkUpdate(conf: ValidConfig) {
       };
 
       replaceScriptButtons([{ name: UPDATE_BUTTON_NAME, visible: true }]);
-      toastr.info(
-        `检测到角色卡新版本 v${remoteVersion} (当前: v${localVersion})，可在脚本设置中点击【${UPDATE_BUTTON_NAME}】查看`,
-        '发现新版本',
-        { timeOut: 6000 },
-      );
+      // toastr.info(
+      //   `检测到角色卡新版本 v${remoteVersion} (当前: v${localVersion})，可在脚本设置中点击【${UPDATE_BUTTON_NAME}】查看`,
+      //   '发现新版本',
+      //   { timeOut: 6000 },
+      // );
     } else {
       console.info(`[自动更新] 角色卡已是最新版本 (v${localVersion})`);
       replaceScriptButtons([]);
@@ -256,7 +251,7 @@ $(async () => {
   const { success, data: conf } = Config.safeParse(getVariables({ type: 'script' }));
 
   if (!success || !isValidConfig(conf)) {
-    toastr.error('无效的更新角色卡！');
+    toastr.error('无效的更新角色卡源！');
     return;
   }
 

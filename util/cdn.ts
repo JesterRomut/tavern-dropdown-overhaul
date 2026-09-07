@@ -143,6 +143,7 @@ export class CDNManager {
           const json = await resp.json();
           const ver = parser(json);
           if (ver) {
+            console.log(`[OZ-CDNManager] 获取版本 ${ver}`);
             this.versionCache.set(repo, ver);
             return ver;
           }
