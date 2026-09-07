@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { CDNManager } from '@util/cdn';
 import _, { debounce } from 'lodash';
-import { CDNManager } from './cdnManager';
 import { vTooltip } from './tooltip';
 
 const { path, cdn, manifest } = defineProps<{
