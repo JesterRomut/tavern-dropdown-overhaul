@@ -13,6 +13,7 @@ export class CDNManager {
   private currentHost: string | null = null;
   private isInitializing: Promise<string | null> | null = null;
   private versionCache: Map<string, string> = new Map();
+  private versionPromises: Map<string, Promise<string | null>> = new Map();
 
   /**
    * 测速单个 Host (改用必定有 CORS 头的 npm 资源)
@@ -115,47 +116,102 @@ export class CDNManager {
     }
   }
 
-  public async fetchLatestVersion(repo: string, options: RequestOptions = {}): Promise<string | null> {
+  /**
+   * 获取远程仓库最新版本/Tag（兼具实时探测、多源回退、防抖缓存及并发去重）
+   * 优先探测 GitHub 实时接口（API 与 Atom 订阅流）穿透缓存，最后降级由 jsDelivr 保底
+   */
+  public async fetchLatestVersion(repo: string, options: RequestOptions | number = {}): Promise<string | null> {
     if (this.versionCache.has(repo)) {
       return this.versionCache.get(repo)!;
     }
+    if (this.versionPromises.has(repo)) {
+      return await this.versionPromises.get(repo)!;
+    }
 
-    const { timeout = 5000, ...fetchOptions } = options;
-    const apis = [
+    const opts = typeof options === 'number' ? { timeout: options } : options;
+    const { timeout = 4000, ...fetchOptions } = opts;
+
+    const apis: {
+      url: string;
+      isXml?: boolean;
+      parser: (data: any) => string | null | undefined;
+    }[] = [
+      {
+        url: `https://api.github.com/repos/${repo}/tags?per_page=1`,
+        parser: (json: any) => json[0]?.name,
+      },
+      {
+        url: `https://github.com/${repo}/tags.atom`,
+        isXml: true,
+        parser: (text: string) => {
+          const match = text.match(/<entry>[\s\S]*?<title>\s*([^<\s]+)\s*<\/title>/i);
+          return match?.[1]?.trim() ?? null;
+        },
+      },
       {
         url: `https://data.jsdelivr.com/v1/packages/gh/${repo}`,
         parser: (json: any) => json.tags?.latest || json.versions?.[0]?.version,
       },
-      {
-        url: `https://api.github.com/repos/${repo}/tags?per_page=1`, // 加上 per_page=1 减少传输体积
-        parser: (json: any) => json[0]?.name,
-      },
-      // { // 我的项目只打tags不打releases就不要这玩意了
-      //   url: `https://api.github.com/repos/${repo}/releases/latest`,
-      //   parser: (json: any) => json.tag_name,
-      // },
     ];
 
-    for (const { url, parser } of apis) {
-      try {
-        const resp = await this.fetchWithTimeout(url, fetchOptions, timeout);
-        if (resp.ok) {
-          const json = await resp.json();
-          const ver = parser(json);
-          if (ver) {
-            console.log(`[OZ-CDNManager] 获取版本 ${ver}`);
-            this.versionCache.set(repo, ver);
-            return ver;
+    const fetchPromise = (async () => {
+      for (const { url, isXml, parser } of apis) {
+        let timer: ReturnType<typeof setTimeout> | null = null;
+        try {
+          const controller = new AbortController();
+          timer = setTimeout(() => controller.abort(), timeout);
+
+          if (fetchOptions.signal) {
+            fetchOptions.signal.addEventListener('abort', () => controller.abort());
           }
+
+          const bustUrl = `${url}${url.includes('?') ? '&' : '?'}_t=${Date.now()}`;
+          const res = await fetch(bustUrl, {
+            cache: 'no-store',
+            ...fetchOptions,
+            signal: controller.signal,
+            headers: {
+              ...(isXml
+                ? { Accept: 'application/atom+xml, application/xml, text/xml, */*' }
+                : { Accept: 'application/vnd.github+json, application/json, */*' }),
+              ...(fetchOptions.headers as Record<string, string>),
+            },
+          });
+
+          if (res.ok) {
+            const data = isXml ? await res.text() : await res.json();
+            const tag = parser(data);
+            if (tag) {
+              const trimmedTag = tag.trim();
+              console.info(`[OZ-CDNManager] 成功从 ${url} 探测到最新 Tag: ${trimmedTag}`);
+              this.versionCache.set(repo, trimmedTag);
+              return trimmedTag;
+            }
+          }
+        } catch (e) {
+          console.warn(`[OZ-CDNManager] 从 ${url} 探测最新版本失败:`, e);
+          continue;
+        } finally {
+          if (timer) clearTimeout(timer);
         }
-      } catch (e) {
-        console.warn(`[OZ-CDNManager] 从 ${url} 获取版本失败:`, e);
-        continue;
       }
+      return null;
+    })();
+
+    this.versionPromises.set(repo, fetchPromise);
+    try {
+      return await fetchPromise;
+    } finally {
+      this.versionPromises.delete(repo);
     }
-    return null;
   }
 
+  /**
+   * 兼容旧命名的别名方法，直接代理到 fetchLatestVersion
+   */
+  public async fetchRemoteLatestRepoTag(repo: string, options: RequestOptions | number = {}): Promise<string | null> {
+    return this.fetchLatestVersion(repo, options);
+  }
   public async fetchGitHub(repo: string, path: string, options: RequestOptions = {}) {
     const version = await this.fetchLatestVersion(repo, options);
     if (!version) {
@@ -168,6 +224,7 @@ export class CDNManager {
     this.currentHost = null;
     this.isInitializing = null;
     this.versionCache.clear();
+    this.versionPromises.clear();
   }
 }
 

@@ -52,11 +52,13 @@ interface GalleryItem extends AvatarInfo {
   blobUrl?: string;
   rawBlob?: Blob;
   error: boolean;
+  loading?: boolean;
 }
 const gallery = ref<GalleryItem[]>([]);
 const manifestError: Ref<string | null> = ref(null);
 const pendingAvatarIndex = ref<number | null>(null); // 当前弹出确认框的卡面索引
 const isApplying = ref(false); // 是否正在应用中
+let isUnmounted = false;
 // function getCdnUrls(repo: string, path: string) {
 //   return [
 //     `https://fastly.jsdelivr.net/gh/${repo}@main/${path}`,
@@ -79,23 +81,31 @@ async function resolveFromRepo(repo: string, path: string): Promise<Blob | null>
   return null;
 }
 
-async function loadGalleryImages() {
-  for (const item of gallery.value) {
-    if (item.blobUrl) continue;
-    item.error = false;
+async function loadGalleryItem(item: GalleryItem) {
+  if (item.blobUrl || item.loading) return;
+  item.loading = true;
+  item.error = false;
 
-    try {
-      const blob = await resolveFromRepo(item.repo, item.path);
-      if (blob) {
-        item.rawBlob = blob;
-        item.blobUrl = URL.createObjectURL(blob);
-      } else {
-        item.error = true;
-      }
-    } catch {
+  try {
+    const blob = await resolveFromRepo(item.repo, item.path);
+    if (isUnmounted) return;
+    if (blob) {
+      item.rawBlob = blob;
+      item.blobUrl = URL.createObjectURL(blob);
+    } else {
       item.error = true;
     }
+  } catch {
+    if (!isUnmounted) {
+      item.error = true;
+    }
+  } finally {
+    item.loading = false;
   }
+}
+
+async function loadGalleryImages() {
+  await Promise.all(gallery.value.map(item => loadGalleryItem(item)));
 }
 
 async function initGallery() {
@@ -205,6 +215,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  isUnmounted = true;
   window.removeEventListener('online', handleOnline);
   window.removeEventListener('offline', handleOffline);
 
@@ -270,10 +281,10 @@ export default {
               v-if="item.error"
               v-tooltip="'点击重试'"
               class="image-placeholder error"
-              @click.stop="loadGalleryImages"
+              @click.stop="loadGalleryItem(item)"
             >
               <i class="fa-solid fa-triangle-exclamation"></i>
-              <span>加载失败</span>
+              <span>点击重试</span>
             </div>
             <!-- 骨架/加载中 -->
             <div v-else-if="!item.blobUrl" class="image-placeholder">

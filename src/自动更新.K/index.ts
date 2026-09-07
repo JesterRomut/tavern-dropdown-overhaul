@@ -87,59 +87,59 @@ function extractLatestVersion(markdown: string): string | null {
  * 实时探测远端 GitHub 仓库最新 Tag（快照版本）
  * 优先采用 GitHub 官方实时接口（API 与 Atom 订阅流），彻底穿透浏览器与中间代理缓存，最后降级以 jsDelivr 保底
  */
-async function fetchRemoteLatestRepoTag(repo: string, timeout = 4000): Promise<string | null> {
-  const apis: {
-    url: string;
-    isXml?: boolean;
-    parser: (data: any) => string | null | undefined;
-  }[] = [
-    {
-      url: `https://api.github.com/repos/${repo}/tags?per_page=1`,
-      parser: (json: any) => json[0]?.name,
-    },
-    {
-      url: `https://github.com/${repo}/tags.atom`,
-      isXml: true,
-      parser: (text: string) => {
-        const match = text.match(/<entry>[\s\S]*?<title>\s*([^<\s]+)\s*<\/title>/i);
-        return match?.[1]?.trim() ?? null;
-      },
-    },
-    {
-      url: `https://data.jsdelivr.com/v1/packages/gh/${repo}`,
-      parser: (json: any) => json.tags?.latest || json.versions?.[0]?.version,
-    },
-  ];
+// async function fetchRemoteLatestRepoTag(repo: string, timeout = 4000): Promise<string | null> {
+//   const apis: {
+//     url: string;
+//     isXml?: boolean;
+//     parser: (data: any) => string | null | undefined;
+//   }[] = [
+//     {
+//       url: `https://api.github.com/repos/${repo}/tags?per_page=1`,
+//       parser: (json: any) => json[0]?.name,
+//     },
+//     {
+//       url: `https://github.com/${repo}/tags.atom`,
+//       isXml: true,
+//       parser: (text: string) => {
+//         const match = text.match(/<entry>[\s\S]*?<title>\s*([^<\s]+)\s*<\/title>/i);
+//         return match?.[1]?.trim() ?? null;
+//       },
+//     },
+//     {
+//       url: `https://data.jsdelivr.com/v1/packages/gh/${repo}`,
+//       parser: (json: any) => json.tags?.latest || json.versions?.[0]?.version,
+//     },
+//   ];
 
-  for (const { url, isXml, parser } of apis) {
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeout);
-      const bustUrl = `${url}${url.includes('?') ? '&' : '?'}_t=${Date.now()}`;
-      const res = await fetch(bustUrl, {
-        signal: controller.signal,
-        cache: 'no-store',
-        headers: isXml
-          ? { Accept: 'application/atom+xml, application/xml, text/xml, */*' }
-          : { Accept: 'application/vnd.github+json, application/json, */*' },
-      });
-      clearTimeout(timer);
+//   for (const { url, isXml, parser } of apis) {
+//     try {
+//       const controller = new AbortController();
+//       const timer = setTimeout(() => controller.abort(), timeout);
+//       const bustUrl = `${url}${url.includes('?') ? '&' : '?'}_t=${Date.now()}`;
+//       const res = await fetch(bustUrl, {
+//         signal: controller.signal,
+//         cache: 'no-store',
+//         headers: isXml
+//           ? { Accept: 'application/atom+xml, application/xml, text/xml, */*' }
+//           : { Accept: 'application/vnd.github+json, application/json, */*' },
+//       });
+//       clearTimeout(timer);
 
-      if (res.ok) {
-        const data = isXml ? await res.text() : await res.json();
-        const tag = parser(data);
-        if (tag) {
-          console.info(`[自动更新] 成功从 ${url} 探测到最新 Tag: ${tag}`);
-          return tag.trim();
-        }
-      }
-    } catch (e) {
-      console.warn(`[自动更新] 从 ${url} 探测最新版本失败:`, e);
-      continue;
-    }
-  }
-  return null;
-}
+//       if (res.ok) {
+//         const data = isXml ? await res.text() : await res.json();
+//         const tag = parser(data);
+//         if (tag) {
+//           console.info(`[自动更新] 成功从 ${url} 探测到最新 Tag: ${tag}`);
+//           return tag.trim();
+//         }
+//       }
+//     } catch (e) {
+//       console.warn(`[自动更新] 从 ${url} 探测最新版本失败:`, e);
+//       continue;
+//     }
+//   }
+//   return null;
+// }
 
 /**
  * 生成用于备份文件的时间戳后缀（格式：YYYYMMDD_HHmmss）
@@ -349,7 +349,7 @@ async function checkUpdate(conf: ValidConfig) {
     }
 
     // 1. 探测远程仓库最新的 Tag（如 v0.0.44），用于精准定位 CDN 快照并彻底绕过 jsDelivr 对 @latest 的长缓存
-    const repoTag = (await fetchRemoteLatestRepoTag(conf.repo)) || 'latest';
+    const repoTag = (await cdn.fetchRemoteLatestRepoTag(conf.repo)) || 'latest';
 
     // 2. 从指定仓库快照中拉取该角色卡的更新日志文件（如 UPDATE.md）
     const cleanChangelogPath = conf.pathChangelog.replace(/^\/+/, '');
