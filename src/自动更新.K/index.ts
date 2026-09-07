@@ -24,7 +24,7 @@ function isValidConfig(conf: Config): conf is ValidConfig {
 }
 
 const cdn = new CDNManager();
-const UPDATE_BUTTON_NAME = '更新角色卡';
+const UPDATE_BUTTON_NAME = (remoteVersion?: string) => (remoteVersion ? `更新角色卡：${remoteVersion}` : '更新角色卡');
 
 let updateContext: {
   conf: ValidConfig;
@@ -34,7 +34,20 @@ let updateContext: {
   changelogText: string;
 } | null = null;
 
+let currentButtonName: string | null = null;
+let currentButtonStop: (() => void) | null = null;
 let isUpdating = false;
+
+/**
+ * 清除更新按钮、状态与事件监听
+ */
+function clearUpdateButton() {
+  currentButtonStop?.();
+  currentButtonStop = null;
+  currentButtonName = null;
+  replaceScriptButtons([]);
+  updateContext = null;
+}
 
 /**
  * 提取并清理版本号字符串（移除开头的 v/V 前缀）
@@ -57,17 +70,6 @@ function hasNewVersion(local: string, remote: string): boolean {
   } catch (err) {
     console.warn('[自动更新] compare-versions 对比失败:', err);
   }
-
-  // // 备用简易版本比较（按点分数值依次对比）
-  // const parseParts = (s: string) => s.split('.').map(p => parseInt(p, 10) || 0);
-  // const pLocal = parseParts(cLocal);
-  // const pRemote = parseParts(cRemote);
-  // for (let i = 0; i < Math.max(pLocal.length, pRemote.length); i++) {
-  //   const n1 = pLocal[i] ?? 0;
-  //   const n2 = pRemote[i] ?? 0;
-  //   if (n1 < n2) return true;
-  //   if (n1 > n2) return false;
-  // }
   return false;
 }
 
@@ -81,34 +83,92 @@ function extractLatestVersion(markdown: string): string | null {
 }
 
 /**
- * 将 Markdown 格式文本转为 HTML，优先使用酒馆自带的 showdown
-//  */
-// function renderMarkdown(content: string): string {
-//   try {
-//       const converter = new globalShowdown.Converter({
-//         simplifiedAutoLink: true,
-//         tables: true,
-//         strikethrough: true,
-//         tasklists: true,
-//         ghCodeBlocks: true,
-//         simpleLineBreaks: true,
-//       });
-//       return converter.makeHtml(content);
+ * 生成用于备份文件的时间戳后缀（格式：YYYYMMDD_HHmmss）
+ */
+function formatTimestamp(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+}
 
-//   } catch (err) {
-//     console.warn('[自动更新] Markdown 解析失败:', err);
-//   }
+/**
+ * 获取当前角色绑定的主世界书名称（不包含附加世界书）
+ */
+async function getCharacterWorldbookName(charName: string): Promise<string | null> {
+  // 1. 尝试从 getCharWorldbookNames 获取 primary（主世界书）
+  try {
+    const charWb = getCharWorldbookNames(charName);
+    if (charWb?.primary) {
+      return charWb.primary;
+    }
+  } catch (e) {
+    console.warn('[自动更新] getCharWorldbookNames 获取角色主世界书失败:', e);
+  }
 
-//   // 降级使用基础转义
-//   return `<pre style="white-space: pre-wrap; font-family: inherit; margin: 0;">${_.escape(content)}</pre>`;
-// }
+  // 2. 尝试从角色卡元数据获取 worldbook
+  try {
+    const char = await getCharacter(charName);
+    if (char?.worldbook) {
+      return char.worldbook;
+    }
+  } catch (e) {
+    console.warn('[自动更新] getCharacter 获取角色主世界书失败:', e);
+  }
+
+  // 3. 尝试从 RawCharacter 获取 embedded character_book 名称
+  try {
+    const rawChar = RawCharacter.find({ name: charName });
+    const bookName = rawChar?.data.character_book.name;
+    if (bookName) {
+      return bookName;
+    }
+  } catch (e) {
+    console.warn('[自动更新] RawCharacter 获取角色书失败:', e);
+  }
+  return null;
+}
+
+/**
+ * 备份指定世界书为副本
+ */
+async function backupWorldbook(wbName: string): Promise<string | null> {
+  const timestamp = formatTimestamp();
+  const backupName = `${wbName}_(备份-${timestamp})`;
+  try {
+    const entries = await getWorldbook(wbName);
+    if (entries) {
+      await createOrReplaceWorldbook(backupName, entries);
+      return backupName;
+    }
+  } catch (e) {
+    console.error(`[自动更新] 备份世界书 ${wbName} 失败:`, e);
+  }
+
+  // 备选方案使用酒馆原生 loadWorldInfo / saveWorldInfo（完整保留条目、深度、扫描等所有原始设置）
+  try {
+    const data = await SillyTavern.loadWorldInfo(wbName);
+    if (data && typeof data === 'object') {
+      const backupData = JSON.parse(JSON.stringify(data));
+      backupData.name = backupName;
+      await SillyTavern.saveWorldInfo(backupName, backupData, true);
+      if (typeof SillyTavern?.updateWorldInfoList === 'function') {
+        await SillyTavern.updateWorldInfoList();
+      }
+      return backupName;
+    }
+  } catch (e) {
+    console.warn(`[自动更新] loadWorldInfo 备份 ${wbName} 失败`, e);
+  }
+
+  return null;
+}
 
 /**
  * 执行角色卡更新下载与替换
  */
 async function performUpdate(conf: ValidConfig, charName: string, remoteVersion: string) {
   if (isUpdating) {
-    toastr.warning('角色卡更新正在进行中，请稍候...');
+    toastr.warning('角色卡更新正在进行中！');
     return;
   }
 
@@ -122,35 +182,17 @@ async function performUpdate(conf: ValidConfig, charName: string, remoteVersion:
       return;
     }
 
-    const contentType = res.headers.get('content-type') || '';
-    const isPng = conf.pathChr.toLowerCase().endsWith('.png') || contentType.includes('image/png');
+    const blob = await res.blob();
 
-    if (isPng) {
-      const blob = await res.blob();
-
-      const importRes = await importRawCharacter(charName, blob);
-      if (importRes && !importRes.ok) {
-        throw new Error(`角色卡导入失败 (HTTP ${importRes.status})`);
-      }
-    } else {
-      const cardData = await res.json();
-      await replaceCharacter(charName, cardData);
+    const importRes = await importRawCharacter(charName, blob);
+    if (importRes && !importRes.ok) {
+      throw new Error(`角色卡导入失败 (HTTP ${importRes.status})`);
     }
 
     await replaceCharacter(charName, { version: remoteVersion });
 
     toastr.success(`角色卡已成功更新至 ${remoteVersion}！`, '更新成功');
-    replaceScriptButtons([]);
-    updateContext = null;
-
-    // 尝试通知酒馆刷新角色列表
-    try {
-      if (typeof SillyTavern !== 'undefined' && typeof SillyTavern.getCharacters === 'function') {
-        await SillyTavern.getCharacters();
-      }
-    } catch (e) {
-      console.warn('[自动更新] 刷新角色列表失败:', e);
-    }
+    clearUpdateButton();
   } catch (err) {
     console.error('[自动更新] 更新角色卡出错:', err);
     toastr.error(`更新角色卡失败: ${err instanceof Error ? err.message : String(err)}`, '更新失败');
@@ -190,7 +232,45 @@ async function showUpdateModal(
   });
 
   if (result === SillyTavern.POPUP_RESULT.AFFIRMATIVE || result === 1 || result === true) {
-    await performUpdate(conf, charName, remoteVersion);
+    const wbName = await getCharacterWorldbookName(charName);
+    if (!wbName) {
+      await performUpdate(conf, charName, remoteVersion);
+      return;
+    }
+    const confirmResult = await SillyTavern.callGenericPopup(
+      '更新角色卡会覆盖当前世界书，要备份吗？',
+      SillyTavern.POPUP_TYPE.CONFIRM,
+      '',
+      {
+        okButton: '备份&更新',
+        cancelButton: '取消',
+        customButtons: [
+          {
+            text: '直接更新',
+            result: SillyTavern.POPUP_RESULT.CUSTOM1,
+          },
+        ],
+      },
+    );
+
+    const isBackupAndUpdate =
+      confirmResult === SillyTavern.POPUP_RESULT.AFFIRMATIVE || confirmResult === 1 || confirmResult === true;
+
+    const isDirectUpdate = confirmResult === SillyTavern.POPUP_RESULT.CUSTOM1 || confirmResult === 2;
+
+    if (isBackupAndUpdate) {
+      toastr.info(`正在备份世界书：${wbName}...`, '开始备份');
+      const backupName = await backupWorldbook(wbName);
+      if (!backupName) {
+        toastr.error('备份世界书失败，已中止更新以保护数据！', '更新中止');
+        return;
+      }
+      toastr.success(`世界书已备份为：${backupName}`, '备份成功');
+
+      await performUpdate(conf, charName, remoteVersion);
+    } else if (isDirectUpdate) {
+      await performUpdate(conf, charName, remoteVersion);
+    }
   }
 }
 
@@ -215,6 +295,7 @@ async function checkUpdate(conf: ValidConfig) {
     const charName = getCurrentCharacterName();
     if (!charName) {
       console.warn('[自动更新] 当前未选择角色卡，跳过更新检查');
+      clearUpdateButton();
       return;
     }
 
@@ -231,16 +312,31 @@ async function checkUpdate(conf: ValidConfig) {
         changelogText,
       };
 
-      replaceScriptButtons([{ name: UPDATE_BUTTON_NAME, visible: true }]);
-      // toastr.info(
-      //   `检测到角色卡新版本 v${remoteVersion} (当前: v${localVersion})，可在脚本设置中点击【${UPDATE_BUTTON_NAME}】查看`,
-      //   '发现新版本',
-      //   { timeOut: 6000 },
-      // );
+      const buttonName = UPDATE_BUTTON_NAME(remoteVersion);
+      if (currentButtonName !== buttonName) {
+        currentButtonStop?.();
+        currentButtonName = buttonName;
+        const { stop } = eventOn(getButtonEvent(buttonName), async () => {
+          if (!updateContext) {
+            await checkUpdate(conf);
+          }
+          if (updateContext) {
+            await showUpdateModal(
+              updateContext.conf,
+              updateContext.charName,
+              updateContext.localVersion,
+              updateContext.remoteVersion,
+              updateContext.changelogText,
+            );
+          }
+        });
+        currentButtonStop = stop;
+      }
+
+      replaceScriptButtons([{ name: buttonName, visible: true }]);
     } else {
       console.info(`[自动更新] 角色卡已是最新版本 (v${localVersion})`);
-      replaceScriptButtons([]);
-      updateContext = null;
+      clearUpdateButton();
     }
   } catch (err) {
     console.error('[自动更新] 检查更新出错:', err);
@@ -254,22 +350,6 @@ $(async () => {
     toastr.error('无效的更新角色卡源！');
     return;
   }
-
-  // 注册更新按钮点击事件
-  eventOn(getButtonEvent(UPDATE_BUTTON_NAME), async () => {
-    if (!updateContext) {
-      await checkUpdate(conf);
-    }
-    if (updateContext) {
-      await showUpdateModal(
-        updateContext.conf,
-        updateContext.charName,
-        updateContext.localVersion,
-        updateContext.remoteVersion,
-        updateContext.changelogText,
-      );
-    }
-  });
 
   // 角色卡页面重新载入时再次检查
   eventOn(tavern_events.CHARACTER_PAGE_LOADED, () => {
