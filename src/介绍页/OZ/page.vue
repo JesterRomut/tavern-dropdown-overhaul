@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AvatarSwitcher from '../shared/AvatarSwitcher.vue';
-import { CDNManager } from '../shared/cdnManager';
+import { CDNManager } from '@util/cdn';
 import { starts } from '../shared/starts';
 import StartsBrowser from '../shared/StartsBrowser.vue';
 import { vTooltip } from '../shared/tooltip';
