@@ -1,16 +1,22 @@
 <script setup lang="ts">
+import { CDNManager } from '@util/cdn';
+import AvatarSwitcher from '../shared/AvatarSwitcher.vue';
 import { starts } from '../shared/starts';
 import StartsBrowser from '../shared/StartsBrowser.vue';
+
+const cdn = new CDNManager();
 </script>
 
 <template>
   <main>
     <p>作者@Kernschmelze。</p>
     <p>巴别塔垮塌时，神让人类失去了共同的语言……但这次，连物种也一起打乱了？！</p>
-    <section>
-      <h3><i class="fa-solid fa-hamsa"></i> 开场一览</h3>
-      <StartsBrowser path="AngelAfterAngel" />
-    </section>
+    <StartsBrowser path="AngelAfterAngel.Start" />
+    <AvatarSwitcher
+      path="AngelAfterAngel.Avatar"
+      :cdn="cdn"
+      :manifest="{ repo: 'JesterRomut/tavern-resources', path: 'character/AngelAfterAngel/avatar/index.json' }"
+    ></AvatarSwitcher>
     <p>
       除单击跳转外，新版酒馆点击右下角箭头下的<code>1/{{ starts.length + 1 }}</code
       >，也可快速跳转开场。
@@ -55,11 +61,11 @@ main {
     text-align: center;
   }
 
-  // > footer h1 {
-  //   font-family: 'ZSFT-685';
-  //   font-weight: normal;
-  //   font-size: 1.6rem;
-  // }
+  > footer h1 {
+    font-family: 'ZSFT-685';
+    font-weight: normal;
+    font-size: 1.6rem;
+  }
 
   > footer h2 {
     font-family: 'ZSFT-651';
@@ -78,9 +84,6 @@ code {
   background-color: black;
 }
 
-h3 {
-  font-weight: bold;
-}
 @media screen and (max-width: 600px) {
   :root {
     --main-padding: 0.5rem;

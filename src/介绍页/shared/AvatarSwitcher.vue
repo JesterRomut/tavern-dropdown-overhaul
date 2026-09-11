@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CDNManager } from '@util/cdn';
+import { type CDNManager } from '@util/cdn';
 import _, { debounce } from 'lodash';
 import { vTooltip } from './tooltip';
 
@@ -223,6 +223,8 @@ onUnmounted(() => {
     if (item.blobUrl) URL.revokeObjectURL(item.blobUrl);
   });
 });
+
+const renderTooltip = (desc: string) => builtin.renderMarkdown(desc);
 </script>
 <script lang="ts">
 export default {
@@ -271,7 +273,7 @@ export default {
           <div
             v-for="(item, idx) in gallery"
             :key="item.path"
-            v-tooltip="item.desc || item.name"
+            v-tooltip="item.desc ? renderTooltip(item.desc) : null"
             class="gallery-item"
             :class="{ active: pendingAvatarIndex === idx }"
             @click="selectAvatar(idx)"
