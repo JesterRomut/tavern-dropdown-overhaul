@@ -1,10 +1,41 @@
 export async function changeGreeting(swipe_id: number) {
-  if (typeof setChatMessages === 'function') {
+  try {
     await setChatMessages([{ message_id: 0, swipe_id }], { refresh: 'affected' });
-  } else if (typeof triggerSlash === 'function') {
-    triggerSlash('/swipe 0 0');
-  } else {
-    throw new Error('OZ前端：未识别到酒馆助手API，也无法使用酒馆原生切换！');
+  } catch {
+    triggerSlash(`/swipe 0 ${swipe_id}`);
+    console.error('OZ前端：跳转开场失败，尝试回退STScript实现');
+  }
+}
+
+export function applyParentTheme() {
+  try {
+    let pw = null;
+    try {
+      pw = window.parent;
+    } catch (e) {
+      pw = null;
+    }
+    if (!pw || pw === window) return;
+
+    const names = ['--SmartThemeBodyColor', '--SmartThemeQuoteColor', '--SmartThemeBlurTintColor'];
+    let pStyle = null;
+    try {
+      pStyle = pw.getComputedStyle(pw.document.documentElement);
+    } catch (e) {
+      pStyle = null;
+    }
+
+    const root = document.documentElement;
+    names.forEach(function (name) {
+      let val = '';
+      val = pw.document.documentElement.style.getPropertyValue(name);
+      if (!val && pStyle) {
+        val = pStyle.getPropertyValue(name);
+      }
+      if (val) root.style.setProperty(name, val.trim());
+    });
+  } catch (err) {
+    console.warn('[theme] 主题色注入失败:', err);
   }
 }
 

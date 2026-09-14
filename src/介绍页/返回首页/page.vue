@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { changeGreeting } from '../shared/util';
+import { applyParentTheme, changeGreeting } from '../shared/util';
+
+onMounted(() => {
+  applyParentTheme();
+});
 </script>
 <template>
   <main>
@@ -13,7 +17,6 @@ import { changeGreeting } from '../shared/util';
 </template>
 <style lang="scss">
 main {
-  color-scheme: dark light;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -32,7 +35,8 @@ main {
   }
 
   cursor: pointer;
-  color: rgba(240, 248, 255, 0.49);
+  //color: rgba(240, 248, 255, 0.49);
+  color: var(--SmartThemeBodyColor);
   font-size: 0.7em;
   // text-shadow:
   //   0 0 10px rgba(83, 196, 237, 0.5),
@@ -43,7 +47,12 @@ main {
     padding: 0.5em 2em;
     border-radius: 2em;
     //background: #18161d7a;
-    background: linear-gradient(108deg, transparent 0%, #18161d99 50%, transparent 100%);
+    // background: linear-gradient(
+    //   108deg,
+    //   transparent 0%,
+    //   color-mix(in srgb, contrast-color(var(--SmartThemeBodyColor)), var(--SmartThemeBlurTintColor) 30%) 50%,
+    //   transparent 100%
+    // );
     // box-shadow:
     //   rgb(0, 0, 0) 0px 50px 100px -20px,
     //   rgb(0, 0, 0) 0px 30px 60px -30px,
@@ -52,12 +61,12 @@ main {
   }
 
   div:hover {
-    background: #ffffff99;
+    background: color-mix(in srgb, contrast-color(var(--SmartThemeBlurTintColor)) 20%, var(--SmartThemeBodyColor));
     // box-shadow:
     //   rgb(0, 0, 0) 0px 50px 100px -20px,
     //   rgb(0, 0, 0) 0px 30px 60px -30px,
     //   rgb(255, 255, 255) 0px -2px 6px 0px inset;
-    color: #18161d;
+    color: color-mix(in srgb, contrast-color(var(--SmartThemeBodyColor)) 20%, var(--SmartThemeBlurTintColor));
   }
   // background: linear-gradient(108deg, transparent 0%, #18161d44 50%, transparent 100%);
 }
