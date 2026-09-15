@@ -27,7 +27,6 @@ export const DEFAULT_STYLE = `
 
 #${DROPDOWN_ID} .search-wrapper {
     padding: 8px;
-    background: rgba(0, 0, 0, 0.2);
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     flex-shrink: 0;
 }
@@ -37,14 +36,13 @@ export const DEFAULT_STYLE = `
     padding: 6px 8px;
     border-radius: 4px;
     border: 1px solid rgba(255, 255, 255, 0.2);
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--SmartThemeBlurTintColor);
     color: inherit;
     outline: none;
     font-size: 0.9em;
 }
 #${DROPDOWN_ID} .search-input:focus {
     border-color: var(--SmartThemeQuoteColor, #888);
-    background: rgba(0, 0, 0, 0.5);
 }
 
 #${DROPDOWN_ID} .options-list {

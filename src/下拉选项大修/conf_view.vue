@@ -15,6 +15,20 @@
               <option>And with strange aeons</option>
               <option>even death may die.</option>
             </select>
+            <select>
+              <option>示例选项(长) - EXAMPLE</option>
+              <option>那是很多年前的事了</option>
+              <option>有人用剪刀把时间线剪断</option>
+              <option>明天和昨天就连在一起了</option>
+              <option>我知道明天会发生什么</option>
+              <option>沙丁鱼从地里钻了出来</option>
+              <option>车站的月台开了个大洞</option>
+              <option>地上的木地板也消失了</option>
+              <option>昨天的记忆已淡然逝去</option>
+              <option>但何为逝去也不太清楚</option>
+              <option>天空之上大厦而立</option>
+              <option>眼睛什么都看不见了</option>
+            </select>
           </div>
 
           <hr class="sysHR" />
