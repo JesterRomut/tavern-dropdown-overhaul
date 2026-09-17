@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { applyParentTheme, changeGreeting } from '../shared/util';
+import { useParentTheme } from '../shared/theme';
+import { changeGreeting } from '../shared/util';
 
-onMounted(() => {
-  applyParentTheme();
-});
+useParentTheme();
 </script>
 <template>
   <main>
@@ -37,12 +36,14 @@ main {
   cursor: pointer;
   //color: rgba(240, 248, 255, 0.49);
   color: var(--SmartThemeBodyColor);
-  font-size: 0.7em;
+  font-size: calc(var(--theme-font-size) * 0.8);
+  font-family: var(--theme-font-family);
+  letter-spacing: var(--theme-letter-spacing);
   // text-shadow:
   //   0 0 10px rgba(83, 196, 237, 0.5),
   //   0 0 15px #18161d,
   //   0 0 20px #18161d;
-  font-weight: 400;
+  font-weight: var(--theme-font-weight);
   div {
     padding: 0.5em 2em;
     border-radius: 2em;

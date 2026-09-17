@@ -10,3 +10,4 @@
 @.cursor/rules/mvu角色卡.mdc
 
 还有，给我讲中文
+可以用jQuery
