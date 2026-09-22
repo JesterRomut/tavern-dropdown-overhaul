@@ -125,6 +125,7 @@ export const DEFAULT_STYLE = `
 export const Config = z
   .object({
     style: z.string().default(DEFAULT_STYLE),
+    overrideSelect2: z.boolean().default(true),
   })
   .prefault({});
 
@@ -138,6 +139,19 @@ export const useConfigStore = defineStore('settings', () => {
 
   return { settings };
 });
+
+export const isTakeOverSelect2Enabled = (): boolean => {
+  try {
+    return useConfigStore().settings.overrideSelect2;
+  } catch (_) {
+    try {
+      const vars = getVariables({ type: 'script', script_id: getScriptId() });
+      return Config.parse(vars).overrideSelect2;
+    } catch {
+      return true;
+    }
+  }
+};
 
 export const injectGlobalStyles = () => {
   $(`#${STYLE_ID}`).remove();

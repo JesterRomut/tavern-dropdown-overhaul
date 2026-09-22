@@ -11,3 +11,4 @@
 
 还有，给我讲中文
 可以用jQuery
+我的Chrome有特别猎奇的bug，这段时间先用Edge

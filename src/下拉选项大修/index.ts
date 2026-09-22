@@ -6,6 +6,7 @@ import {
   DROPDOWN_ID,
   EVENT_NAMESPACE,
   injectGlobalStyles,
+  isTakeOverSelect2Enabled,
   SCROLL_NAMESPACE,
   SEARCH_THRESHOLD,
   STYLE_ID,
@@ -173,6 +174,9 @@ const init = () => {
   // 1. 全面接管所有 Select2 下拉框（包括单选、多选及第三方插件/预设转换的 Select2）
   let isUnselecting = false;
   $(targetDoc).on(`select2:unselect.${EVENT_NAMESPACE}`, SELECT2_SELECTOR, () => {
+    if (!isTakeOverSelect2Enabled()) {
+      return;
+    }
     isUnselecting = true;
     setTimeout(() => {
       isUnselecting = false;
@@ -180,6 +184,9 @@ const init = () => {
   });
 
   $(targetDoc).on(`select2:opening.${EVENT_NAMESPACE}`, SELECT2_SELECTOR, function (e) {
+    if (!isTakeOverSelect2Enabled()) {
+      return;
+    }
     const $select = $(this);
     if ($select.is(':disabled') || Boolean($select.prop('disabled'))) {
       return;

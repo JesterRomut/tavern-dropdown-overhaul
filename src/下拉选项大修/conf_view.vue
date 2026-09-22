@@ -34,11 +34,20 @@
           <hr class="sysHR" />
 
           <div class="k3rn-dropdown-extension_block flex-container">
+            <label class="checkbox_label" type="checkbox" title="开启后将接管所有 Select2 下拉框">
+              <input v-model="settings.overrideSelect2" type="checkbox" />
+              <span>接管Select2：如世界书多选框</span>
+            </label>
+          </div>
+
+          <hr class="sysHR" />
+
+          <div class="k3rn-dropdown-extension_block flex-container">
             <h3>{{ `样式修改 (DIY)` }}</h3>
           </div>
 
           <div class="k3rn-dropdown-extension_block flex-container">
-            <label for="k3rn-dropdown-extension-setting">{{ `变量对应色表（随酒馆主题变动）` }}</label>
+            <label for="k3rn-dropdown-extension-setting">{{ `变量对应色表：随酒馆主题变动` }}</label>
             <div class="k3rn-color-grid">
               <!--
             --SmartThemeEmColor: rgba(150, 150, 150, 1);
