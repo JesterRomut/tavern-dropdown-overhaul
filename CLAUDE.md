@@ -9,9 +9,12 @@
 然后zod用v4规范，deprecated的东西不要用
 
 @.cursor/rules/前端界面.mdc
+
+写前端界面（如果有index.html就是前端界面）必看，没有就别看，会卡你上下文
+
 @.cursor/rules/mcp.mdc
 
-以上写前端界面或者debug必看，里面写了如何用Chrome DevTools MCP来实操浏览器
+debug必看，里面写了如何用Chrome DevTools MCP来实操浏览器
 建议用Edge（launch.json里配置了mcp端口）
 
 ---
@@ -22,3 +25,7 @@
 如果不经同意直接写了我直接找人弄你
 
 还有不准加emoji，加了我找人弄你
+
+通常不需要手动用prettier，我的VSCode会自动格式化
+
+最后我们的代码都是要打包的，在能用的同时写的越小越好，不准写那种检测某个酒馆助手函数是不是`=== function`还要兜底的这种冗余玩意

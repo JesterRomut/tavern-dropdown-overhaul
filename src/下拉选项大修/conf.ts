@@ -94,13 +94,18 @@ export const DEFAULT_STYLE = `#${DROPDOWN_ID} {
     transition: all 0.15s ease;
     box-sizing: border-box;
 }
-#${DROPDOWN_ID}.is-multi .option-item.selected::after {
-    content: '✓';
-    font-size: 11px;
-    font-weight: bold;
+#${DROPDOWN_ID}.is-multi .option-item.selected::before {
+    content: '';
+    width: 0.65em;
+    height: 0.65em;
+        content: "";
+    box-shadow: inset 1em 1em var(--SmartThemeQuoteColor);
+    transform-origin: bottom left;
+    clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
     color: #fff;
     background: var(--SmartThemeQuoteColor, #888);
-    border-color: var(--SmartThemeQuoteColor, #888);
+    position: absolute;
+    right: calc(12px + 0.65em / 4);
 }
 #${DROPDOWN_ID} .no-results {
     padding: 12px;
@@ -162,19 +167,19 @@ export const useConfigStore = defineStore('settings', () => {
     // 2. 如果当前选中的是默认主题，强制保证 style 与内置 DEFAULT_STYLE 严格一致，清理历史残留
     initial.style = DEFAULT_STYLE;
   } else {
-    // 3. 如果当前选中的是自定义主题，确保 style 与该主题保存的 style 一致；若不存在则安全回退到默认
+    // 3. 如果当前选中的是自定义主题，若该主题在库中不存在则安全回退到默认；若存在且当前使用中 style 为空才载入库中样式
     const found = initial.themes.find(t => t.name === initial.currentTheme);
-    if (found) {
-      initial.style = found.style;
-    } else {
+    if (!found) {
       initial.currentTheme = DEFAULT_THEME_NAME;
       initial.style = DEFAULT_STYLE;
+    } else if (!initial.style) {
+      initial.style = found.style;
     }
   }
 
   const settings = ref(initial);
 
-  // 监听当前主题切换，自动载入对应样式
+  // 监听当前主题切换，从库中载入对应样式覆盖使用中样式（被动还原未保存修改）
   watch(
     () => settings.value.currentTheme,
     newTheme => {
@@ -185,18 +190,6 @@ export const useConfigStore = defineStore('settings', () => {
         if (found) {
           settings.value.style = found.style;
         }
-      }
-    },
-  );
-
-  // 监听 style 修改，若当前为自定义主题，实时同步回主题列表中
-  watch(
-    () => settings.value.style,
-    newStyle => {
-      if (settings.value.currentTheme === DEFAULT_THEME_NAME) return;
-      const found = settings.value.themes.find(t => t.name === settings.value.currentTheme);
-      if (found && found.style !== newStyle) {
-        found.style = newStyle;
       }
     },
   );

@@ -1,150 +1,37 @@
-<template>
-  <div id="k3rn-dropdown_container" class="extension_container">
-    <div class="k3rn-dropdown-extension-setting">
-      <div class="inline-drawer">
-        <div class="inline-drawer-toggle inline-drawer-header">
-          <b>下拉选项大修</b>
-          <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
-        </div>
-        <div class="inline-drawer-content">
-          <div class="flex-container">
-            <select>
-              <option>示例选项短 - EXAMPLE</option>
-              <option>That is not dead</option>
-              <option>which can eternal lie,</option>
-              <option>And with strange aeons</option>
-              <option>even death may die.</option>
-            </select>
-            <select>
-              <option>示例选项长 - EXAMPLE</option>
-              <option>那是很多年前的事了</option>
-              <option>有人用剪刀把时间线剪断</option>
-              <option>明天和昨天就连在一起了</option>
-              <option>我知道明天会发生什么</option>
-              <option>沙丁鱼从地里钻了出来</option>
-              <option>车站的月台开了个大洞</option>
-              <option>地上的木地板也消失了</option>
-              <option>昨天的记忆已淡然逝去</option>
-              <option>但何为逝去也不太清楚</option>
-              <option>天空之上大厦而立</option>
-              <option>眼睛什么都看不见了</option>
-            </select>
-          </div>
-
-          <hr class="sysHR" />
-          <div class="flex-container">
-            <h3>主题</h3>
-          </div>
-
-          <!-- 主题预设工具栏 -->
-          <div class="flex-container k3rn-theme-toolbar">
-            <select v-model="settings.currentTheme" class="k3rn-theme-select" title="切换主题预设">
-              <option :value="DEFAULT_THEME_NAME">{{ `默认 (内置)` }}</option>
-              <option v-for="t in settings.themes" :key="t.name" :value="t.name">
-                {{ t.name }}
-              </option>
-            </select>
-            <div class="menu_button fa-solid fa-plus" title="新建主题 (基于当前样式)" @click="createNewTheme"></div>
-            <div
-              class="menu_button fa-solid fa-pen-to-square"
-              :class="{ disabled: isDefaultTheme }"
-              title="重命名当前主题"
-              @click="renameCurrentTheme"
-            ></div>
-            <div
-              class="menu_button red_button fa-solid fa-trash-can"
-              :class="{ disabled: isDefaultTheme }"
-              title="删除当前主题"
-              @click="deleteCurrentTheme"
-            ></div>
-            <div
-              class="menu_button fa-solid fa-file-export"
-              title="导出当前主题为 JSON"
-              @click="exportCurrentTheme"
-            ></div>
-            <div class="menu_button fa-solid fa-file-import" title="导入主题 JSON" @click="triggerImport"></div>
-            <input ref="fileInputRef" type="file" accept=".json" style="display: none" @change="handleFileImport" />
-          </div>
-
-          <div v-if="isDefaultTheme" class="flex-container">
-            <div class="info-block warning">
-              <i class="fa-solid fa-lock"></i>
-              <span>内置主题为只读。点击上方 <b>+</b> 号以基于此主题创建新主题。</span>
-            </div>
-          </div>
-
-          <div class="flex-container">
-            <label for="k3rn-dropdown-extension-setting">{{ `主题色表 - 随酒馆主题变动` }}</label>
-            <br />
-            <span>CSS使用例：<code>var(--SmartThemeBodyColor)</code></span>
-            <div class="k3rn-color-grid">
-              <!--
-            --SmartThemeEmColor: rgba(150, 150, 150, 1);
-    --SmartThemeUnderlineColor: rgba(79, 154, 255, 0.9);
-    --SmartThemeQuoteColor: rgba(89, 146, 221, 1);
-    --SmartThemeBlurTintColor: rgba(52, 58, 62, 0.8);
-    --SmartThemeChatTintColor: rgba(42, 42, 42, 0);
-    --SmartThemeUserMesBlurTintColor: rgba(32, 32, 32, 0.57);
-    --SmartThemeBotMesBlurTintColor: rgba(0, 0, 0, 0.61);
-    --SmartThemeShadowColor: rgba(32, 33, 36, 1);
-    --SmartThemeBorderColor: rgba(32, 33, 36, 1);
-            -->
-              <div>--SmartThemeBodyColor</div>
-              <div></div>
-              <div>--SmartThemeEmColor</div>
-              <div></div>
-              <div>--SmartThemeUnderlineColor</div>
-              <div></div>
-              <div>--SmartThemeQuoteColor</div>
-              <div></div>
-              <div>--SmartThemeBlurTintColor</div>
-              <div></div>
-              <div>--SmartThemeChatTintColor</div>
-              <div></div>
-              <div>--SmartThemeUserMesBlurTintColor</div>
-              <div></div>
-              <div>--SmartThemeBotMesBlurTintColor</div>
-              <div></div>
-              <div>--SmartThemeShadowColor</div>
-              <div></div>
-              <div>--SmartThemeBorderColor</div>
-              <div></div>
-            </div>
-          </div>
-
-          <div class="flex-container">
-            <textarea
-              v-model="settings.style"
-              :readonly="isDefaultTheme"
-              :class="{ 'is-readonly': isDefaultTheme }"
-              :placeholder="DEFAULT_STYLE"
-            ></textarea>
-          </div>
-
-          <hr class="sysHR" />
-          <div class="flex-container">
-            <h3>选项</h3>
-          </div>
-          <div class="flex-container">
-            <label class="checkbox_label" type="checkbox" title="开启后将接管所有 Select2 下拉框">
-              <input v-model="settings.overrideSelect2" type="checkbox" />
-              <span>接管Select2：如世界书多选框</span>
-            </label>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
 import { storeToRefs } from 'pinia';
 import { computed, ref } from 'vue';
-import { DEFAULT_STYLE, DEFAULT_THEME_NAME, ThemeImportSchema, useConfigStore } from './conf';
+import {
+  DEFAULT_STYLE,
+  DEFAULT_THEME_NAME,
+  normalizeStyle,
+  SEARCH_THRESHOLD,
+  ThemeImportSchema,
+  useConfigStore,
+} from './conf';
 
 const { settings } = storeToRefs(useConfigStore());
 
 const isDefaultTheme = computed(() => settings.value.currentTheme === DEFAULT_THEME_NAME);
+
+const isStyleModified = computed(() => {
+  if (isDefaultTheme.value) return false;
+  const found = settings.value.themes.find(t => t.name === settings.value.currentTheme);
+  if (!found) return false;
+  return normalizeStyle(found.style) !== normalizeStyle(settings.value.style);
+});
+
+const saveCurrentTheme = () => {
+  if (isDefaultTheme.value) {
+    toastr.info('默认内置主题为只读，如需保存请点击 + 号创建新主题！');
+    return;
+  }
+  const found = settings.value.themes.find(t => t.name === settings.value.currentTheme);
+  if (found) {
+    found.style = settings.value.style;
+    toastr.success(`已保存当前样式至主题 "${found.name}"！`);
+  }
+};
 
 const callPopupInput = async (title: string, defaultValue = ''): Promise<string | null> => {
   if (
@@ -333,7 +220,185 @@ const handleFileImport = async (e: Event) => {
     target.value = '';
   }
 };
+
+const toggleExampleSearch = ref(false);
+const toggleExampleSelect2 = ref(false);
+
+const exampleTexts = [
+  `示例选项 - EXAMPLE`,
+  `那是很多年前的事了`,
+  `有人用剪刀把时间线剪断`,
+  `明天和昨天就连在一起了`,
+  `我知道明天会发生什么`,
+  `沙丁鱼从地里钻了出来`,
+  `车站的月台开了个大洞`,
+  `地上的木地板也消失了`,
+  `昨天的记忆已淡然逝去`,
+  `但何为逝去也不太清楚`,
+  `天空之上大厦而立`,
+  `眼睛什么都看不见了`,
+];
+
+const currentExampleTexts = computed(() =>
+  toggleExampleSearch.value ? exampleTexts : exampleTexts.slice(0, SEARCH_THRESHOLD - 1),
+);
+
+// In your Javascript (external .js resource or <script> tag)
 </script>
+<template>
+  <div id="k3rn-dropdown_container" class="extension_container">
+    <div class="k3rn-dropdown-extension-setting">
+      <div class="inline-drawer">
+        <div class="inline-drawer-toggle inline-drawer-header">
+          <b>下拉选项大修</b>
+          <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+        </div>
+        <div class="inline-drawer-content">
+          <div class="flex-container">
+            <div class="flex-container">
+              <h3>示例选项</h3>
+            </div>
+            <select v-if="toggleExampleSelect2" id="k3rn-example-select2" multiple>
+              <option v-for="value in currentExampleTexts" :key="value">
+                {{ value }}
+              </option>
+            </select>
+            <select v-else>
+              <option v-for="value in currentExampleTexts" :key="value">
+                {{ value }}
+              </option>
+            </select>
+            <div class="flex-container">
+              <label class="checkbox_label" type="checkbox" title="开启后将接管所有 Select2 下拉框">
+                <input v-model="toggleExampleSearch" type="checkbox" />
+                <span>显示搜索框</span>
+              </label>
+            </div>
+            <div class="flex-container">
+              <label class="checkbox_label" type="checkbox" title="开启后将接管所有 Select2 下拉框">
+                <input v-model="toggleExampleSelect2" type="checkbox" />
+                <span>切换为Select2</span>
+              </label>
+            </div>
+          </div>
+
+          <hr class="sysHR" />
+          <div class="flex-container">
+            <h3>主题</h3>
+          </div>
+
+          <!-- 主题预设工具栏 -->
+          <div class="flex-container k3rn-theme-toolbar">
+            <select v-model="settings.currentTheme" class="k3rn-theme-select" title="切换主题预设">
+              <option :value="DEFAULT_THEME_NAME">{{ `默认 (内置)` }}</option>
+              <option v-for="t in settings.themes" :key="t.name" :value="t.name">
+                {{ t.name }}
+              </option>
+            </select>
+            <div
+              class="menu_button fa-solid fa-save"
+              :class="{ disabled: isDefaultTheme, 'is-unsaved': isStyleModified }"
+              :title="
+                isDefaultTheme
+                  ? '默认内置主题不可覆盖'
+                  : isStyleModified
+                    ? '保存当前样式修改到此主题'
+                    : '当前样式与库中一致'
+              "
+              @click="saveCurrentTheme"
+            ></div>
+            <div class="menu_button fa-solid fa-plus" title="新建主题 (基于当前样式)" @click="createNewTheme"></div>
+            <div
+              class="menu_button fa-solid fa-pen-to-square"
+              :class="{ disabled: isDefaultTheme }"
+              title="重命名当前主题"
+              @click="renameCurrentTheme"
+            ></div>
+            <div
+              class="menu_button red_button fa-solid fa-trash-can"
+              :class="{ disabled: isDefaultTheme }"
+              title="删除当前主题"
+              @click="deleteCurrentTheme"
+            ></div>
+            <div
+              class="menu_button fa-solid fa-file-export"
+              title="导出当前主题为 JSON"
+              @click="exportCurrentTheme"
+            ></div>
+            <div class="menu_button fa-solid fa-file-import" title="导入主题 JSON" @click="triggerImport"></div>
+            <input ref="fileInputRef" type="file" accept=".json" style="display: none" @change="handleFileImport" />
+          </div>
+
+          <div v-if="isDefaultTheme" class="flex-container">
+            <div class="info-block warning">
+              <i class="fa-solid fa-lock"></i>
+              <span>内置主题为只读。点击上方 <b>+</b> 号以基于此主题创建新主题。</span>
+            </div>
+          </div>
+
+          <div class="flex-container">
+            <label for="k3rn-dropdown-extension-setting">{{ `主题色表 - 随酒馆主题变动` }}</label>
+            <br />
+            <span>CSS使用例：<code>var(--SmartThemeBodyColor)</code></span>
+            <div class="k3rn-color-grid">
+              <!--
+            --SmartThemeEmColor: rgba(150, 150, 150, 1);
+    --SmartThemeUnderlineColor: rgba(79, 154, 255, 0.9);
+    --SmartThemeQuoteColor: rgba(89, 146, 221, 1);
+    --SmartThemeBlurTintColor: rgba(52, 58, 62, 0.8);
+    --SmartThemeChatTintColor: rgba(42, 42, 42, 0);
+    --SmartThemeUserMesBlurTintColor: rgba(32, 32, 32, 0.57);
+    --SmartThemeBotMesBlurTintColor: rgba(0, 0, 0, 0.61);
+    --SmartThemeShadowColor: rgba(32, 33, 36, 1);
+    --SmartThemeBorderColor: rgba(32, 33, 36, 1);
+            -->
+              <div>--SmartThemeBodyColor</div>
+              <div></div>
+              <div>--SmartThemeEmColor</div>
+              <div></div>
+              <div>--SmartThemeUnderlineColor</div>
+              <div></div>
+              <div>--SmartThemeQuoteColor</div>
+              <div></div>
+              <div>--SmartThemeBlurTintColor</div>
+              <div></div>
+              <div>--SmartThemeChatTintColor</div>
+              <div></div>
+              <div>--SmartThemeUserMesBlurTintColor</div>
+              <div></div>
+              <div>--SmartThemeBotMesBlurTintColor</div>
+              <div></div>
+              <div>--SmartThemeShadowColor</div>
+              <div></div>
+              <div>--SmartThemeBorderColor</div>
+              <div></div>
+            </div>
+          </div>
+
+          <div class="flex-container">
+            <textarea
+              v-model="settings.style"
+              :readonly="isDefaultTheme"
+              :class="{ 'is-readonly': isDefaultTheme }"
+              :placeholder="DEFAULT_STYLE"
+            ></textarea>
+          </div>
+
+          <hr class="sysHR" />
+          <div class="flex-container">
+            <h3>选项</h3>
+          </div>
+          <div class="flex-container">
+            <label class="checkbox_label" type="checkbox" title="开启后将接管所有 Select2 下拉框">
+              <input v-model="settings.overrideSelect2" type="checkbox" />
+              <span>接管Select2：如世界书多选框</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
 
 <style scoped>
 .info-block.warning {
@@ -350,6 +415,10 @@ const handleFileImport = async (e: Event) => {
   align-items: baseline;
   gap: 5px;
   flex-wrap: wrap;
+}
+
+.k3rn-theme-toolbar .menu_button.is-unsaved {
+  color: var(--SmartThemeQuoteColor, #ffc107);
 }
 
 .k3rn-theme-select {
