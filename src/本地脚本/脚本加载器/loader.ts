@@ -1,11 +1,13 @@
-import { createCDNContext, fetchGitHub, fetchLatestRepoTag, getGitHubCdnUrl } from '@util/cdn';
+import { createCDNContext, fetchGitHub, fetchLatestRepoTag, getFastestHost, getGitHubCdnUrl } from '@util/cdn';
 
 const ctx = createCDNContext();
 
 export async function loadScript(repo: string, path: string, pathReadme: string, name = '脚本加载器') {
   try {
-    const tag = (await fetchLatestRepoTag(repo, undefined, ctx)) || 'latest';
-    const scriptUrl = getGitHubCdnUrl(repo, path, tag);
+    const [tagRes, hostRes] = await Promise.all([fetchLatestRepoTag(repo, undefined, ctx), getFastestHost(ctx)]);
+    const tag = tagRes || 'latest';
+    const host = hostRes || undefined;
+    const scriptUrl = getGitHubCdnUrl(repo, path, tag, host);
     console.info(`[${name}] 正在动态加载: ${scriptUrl}`);
 
     await import(/* webpackIgnore: true */ scriptUrl);

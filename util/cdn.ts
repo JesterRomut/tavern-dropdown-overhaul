@@ -3,10 +3,10 @@ export interface RequestOptions extends RequestInit {
 }
 
 export const DEFAULT_CDN_HOSTS = [
-  'https://cdn.jsdelivr.net',
+  'https://testingcf.jsdelivr.net',
   'https://fastly.jsdelivr.net',
   'https://gcore.jsdelivr.net',
-  'https://testingcf.jsdelivr.net',
+  'https://cdn.jsdelivr.net',
 ] as const;
 
 export interface CDNContext {
@@ -147,7 +147,7 @@ export async function fetchFromCdn(
 
     host = await switchHost(host, ctx);
     if (!host) {
-      throw new Error('[OZ-CDNManager] 所有后备隐藏节点不可用');
+      throw new Error('[OZ-CDNManager] 所有后备隐藏节点不可用', { cause: err });
     }
 
     return await fetchWithTimeout(`${host}${normalizedPath}`, fetchOptions, timeout);
@@ -178,13 +178,19 @@ export async function fetchLatestRepoTag(
   }
 
   const opts = typeof options === 'number' ? { timeout: options } : options;
-  const { timeout = 8000, ...fetchOptions } = opts;
+  const { timeout = 3000, ...fetchOptions } = opts;
 
   const sources: {
     url: string;
-    method?: string;
     parser: (res: Response) => Promise<string | null | undefined> | string | null | undefined;
   }[] = [
+    {
+      url: `https://gh-proxy.com/https://api.github.com/repos/${repo}/tags?per_page=1`,
+      parser: async res => {
+        const json = await res.json();
+        return json[0]?.name;
+      },
+    },
     {
       url: `https://api.github.com/repos/${repo}/tags?per_page=1`,
       parser: async res => {
@@ -199,15 +205,10 @@ export async function fetchLatestRepoTag(
         return json.tags?.latest || json.versions?.[0]?.version;
       },
     },
-    {
-      url: `https://testingcf.jsdelivr.net/gh/${repo}@latest/package.json`,
-      method: 'HEAD',
-      parser: res => res.headers.get('x-jsd-version'),
-    },
   ];
 
   const fetchPromise = (async () => {
-    const tasks = sources.map(async ({ url, method = 'GET', parser }) => {
+    for (const { url, parser } of sources) {
       let timer: ReturnType<typeof setTimeout> | null = null;
       try {
         const controller = new AbortController();
@@ -219,7 +220,7 @@ export async function fetchLatestRepoTag(
 
         const bustUrl = `${url}${url.includes('?') ? '&' : '?'}_t=${Date.now()}`;
         const res = await fetch(bustUrl, {
-          method,
+          method: 'GET',
           cache: 'no-store',
           ...fetchOptions,
           signal: controller.signal,
@@ -240,20 +241,17 @@ export async function fetchLatestRepoTag(
 
         const trimmedTag = tag.trim();
         console.info(`[OZ-CDNManager] 成功从 ${url} 探测到最新 Tag: ${trimmedTag}`);
+        cache.set(repo, trimmedTag);
         return trimmedTag;
+      } catch (err) {
+        console.warn(`[OZ-CDNManager] 从 ${url} 探测失败:`, err);
       } finally {
         if (timer) clearTimeout(timer);
       }
-    });
-
-    try {
-      const fastestTag = await Promise.any(tasks);
-      cache.set(repo, fastestTag);
-      return fastestTag;
-    } catch {
-      console.warn('[OZ-CDNManager] 所有探测源均未能获取到最新 Tag');
-      return null;
     }
+
+    console.warn('[OZ-CDNManager] 所有探测源均未能获取到最新 Tag');
+    return null;
   })();
 
   promises.set(repo, fetchPromise);
@@ -290,9 +288,6 @@ export async function fetchGitHub(
 ): Promise<Response> {
   const version = await fetchLatestRepoTag(repo, options, ctx);
   const cleanPath = path.replace(/^\/+/, '');
-  if (!version) {
-    return await fetchFromCdn(`gh/${repo}@latest/${cleanPath}`, options, ctx);
-  }
   return await fetchFromCdn(`gh/${repo}@${version}/${cleanPath}`, options, ctx);
 }
 
