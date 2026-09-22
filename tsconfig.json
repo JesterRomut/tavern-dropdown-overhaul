@@ -1,30 +1,13 @@
 {
   "compilerOptions": {
-    "types": [
-      "jquery",
-      "jqueryui",
-      "lodash",
-      "toastr",
-      "type-fest",
-      "yaml",
-      "zod",
-    ],
+    "types": ["jquery", "jqueryui", "lodash", "toastr", "type-fest", "yaml", "zod"],
     "target": "ESNext",
     "module": "ESNext",
-<<<<<<< HEAD
-    "outDir": "dist",
-    "baseUrl": ".",
-=======
     "rootDir": ".",
     "outDir": "dist",
->>>>>>> 4a9344276d925a83e32726c58b9b05debdf4a8ad
     "paths": {
-      "@util/*": [
-        "./util/*"
-      ],
-      "@/*": [
-        "./src/*"
-      ]
+      "@util/*": ["./util/*"],
+      "@/*": ["./src/*"]
     },
     "moduleDetection": "auto",
     "moduleResolution": "bundler",
@@ -43,16 +26,6 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": [
-    "@types",
-    "初始模板",
-    "示例",
-    "src",
-    "util",
-    "*.d.ts",
-  ],
-  "exclude": [
-    "**/dist/**",
-    "**/node_modules/**",
-  ]
+  "include": ["@types", "初始模板", "示例", "src", "util", "*.d.ts"],
+  "exclude": ["**/dist/**", "**/node_modules/**"]
 }
