@@ -10,7 +10,8 @@
 
 @.cursor/rules/前端界面.mdc
 
-写前端界面（如果有index.html就是前端界面）必看，没有就别看，会卡你上下文
+写前端界面（如果有index.html就是前端界面，没有就不是）必看
+注意.vue文件不一定是前端界面，也可能是内嵌在脚本中用的
 
 @.cursor/rules/mcp.mdc
 

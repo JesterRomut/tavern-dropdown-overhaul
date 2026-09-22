@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import {
   DEFAULT_STYLE,
   DEFAULT_THEME_NAME,
@@ -243,7 +243,42 @@ const currentExampleTexts = computed(() =>
   toggleExampleSearch.value ? exampleTexts : exampleTexts.slice(0, SEARCH_THRESHOLD - 1),
 );
 
-// In your Javascript (external .js resource or <script> tag)
+const exampleSelect2Ref = ref<HTMLSelectElement | null>(null);
+
+const initSelect2 = async () => {
+  await nextTick();
+  if (!exampleSelect2Ref.value) return;
+  const el: JQuery<HTMLSelectElement> & { select2: ((...args: any) => any) | undefined } = $(
+    exampleSelect2Ref.value,
+  ) as any;
+  if (typeof el.select2 !== 'function') return;
+  el.select2({ width: '100%' });
+};
+
+const destroySelect2 = () => {
+  if (!exampleSelect2Ref.value) return;
+  const el: JQuery<HTMLSelectElement> & { select2: ((...args: any) => any) | undefined } = $(
+    exampleSelect2Ref.value,
+  ) as any;
+  if (!el.data('select2') || typeof el.select2 !== 'function') return;
+  el.select2('destroy');
+};
+
+watch(toggleExampleSelect2, val => {
+  if (val) {
+    initSelect2();
+  } else {
+    destroySelect2();
+  }
+});
+
+watch(currentExampleTexts, () => {
+  if (toggleExampleSelect2.value) {
+    initSelect2();
+  }
+});
+
+onBeforeUnmount(destroySelect2);
 </script>
 <template>
   <div id="k3rn-dropdown_container" class="extension_container">
@@ -258,12 +293,18 @@ const currentExampleTexts = computed(() =>
             <div class="flex-container">
               <h3>示例选项</h3>
             </div>
-            <select v-if="toggleExampleSelect2" id="k3rn-example-select2" multiple>
-              <option v-for="value in currentExampleTexts" :key="value">
+            <select
+              v-if="toggleExampleSelect2"
+              id="k3rn-example-select2"
+              ref="exampleSelect2Ref"
+              class="k3rn-example-select"
+              multiple
+            >
+              <option v-for="(value, index) in currentExampleTexts" :key="value" :selected="index === 0">
                 {{ value }}
               </option>
             </select>
-            <select v-else>
+            <select v-else class="k3rn-example-select">
               <option v-for="value in currentExampleTexts" :key="value">
                 {{ value }}
               </option>
@@ -406,9 +447,9 @@ const currentExampleTexts = computed(() =>
   gap: 0.5rem;
   width: 100%;
 }
-/* select {
-  border: 2px rgba(128, 128, 128, 0.5) solid !important;
-} */
+.k3rn-example-select {
+  width: 100%;
+}
 
 .k3rn-theme-toolbar {
   display: flex;
