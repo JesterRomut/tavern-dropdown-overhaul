@@ -144,19 +144,62 @@ export const Config = z
   })
   .prefault({});
 
+export const normalizeStyle = (s?: string): string => {
+  return (s ?? '').replace(/\r\n/g, '\n').trim();
+};
+
 export const useConfigStore = defineStore('settings', () => {
   let initial = Config.parse(getVariables({ type: 'script', script_id: getScriptId() }));
 
-  // 向下兼容：如果 themes 为空但已有 style 与 DEFAULT_STYLE 不同，自动迁入一个“我的主题”
-  if (initial.themes.length === 0 && initial.style && initial.style.trim() !== DEFAULT_STYLE.trim()) {
+  // 1. 向下兼容：如果 themes 为空但已有 style 与 DEFAULT_STYLE 不同，自动迁入一个“我的主题”
+  if (initial.themes.length === 0 && initial.style && normalizeStyle(initial.style) !== normalizeStyle(DEFAULT_STYLE)) {
     initial = {
       ...initial,
       currentTheme: '我的主题',
       themes: [{ name: '我的主题', style: initial.style }],
     };
+  } else if (initial.currentTheme === DEFAULT_THEME_NAME) {
+    // 2. 如果当前选中的是默认主题，强制保证 style 与内置 DEFAULT_STYLE 严格一致，清理历史残留
+    initial.style = DEFAULT_STYLE;
+  } else {
+    // 3. 如果当前选中的是自定义主题，确保 style 与该主题保存的 style 一致；若不存在则安全回退到默认
+    const found = initial.themes.find(t => t.name === initial.currentTheme);
+    if (found) {
+      initial.style = found.style;
+    } else {
+      initial.currentTheme = DEFAULT_THEME_NAME;
+      initial.style = DEFAULT_STYLE;
+    }
   }
 
   const settings = ref(initial);
+
+  // 监听当前主题切换，自动载入对应样式
+  watch(
+    () => settings.value.currentTheme,
+    newTheme => {
+      if (newTheme === DEFAULT_THEME_NAME) {
+        settings.value.style = DEFAULT_STYLE;
+      } else {
+        const found = settings.value.themes.find(t => t.name === newTheme);
+        if (found) {
+          settings.value.style = found.style;
+        }
+      }
+    },
+  );
+
+  // 监听 style 修改，若当前为自定义主题，实时同步回主题列表中
+  watch(
+    () => settings.value.style,
+    newStyle => {
+      if (settings.value.currentTheme === DEFAULT_THEME_NAME) return;
+      const found = settings.value.themes.find(t => t.name === settings.value.currentTheme);
+      if (found && found.style !== newStyle) {
+        found.style = newStyle;
+      }
+    },
+  );
 
   watch(
     () => settings.value,

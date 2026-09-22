@@ -3,16 +3,41 @@
     <div class="k3rn-dropdown-extension-setting">
       <div class="inline-drawer">
         <div class="inline-drawer-toggle inline-drawer-header">
-          <b>{{ `下拉选项大修` }}</b>
+          <b>下拉选项大修</b>
           <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
         </div>
         <div class="inline-drawer-content">
-          <div class="k3rn-dropdown-extension_block flex-container">
-            <h3>{{ `样式修改` }}</h3>
+          <div class="flex-container">
+            <select>
+              <option>示例选项短 - EXAMPLE</option>
+              <option>That is not dead</option>
+              <option>which can eternal lie,</option>
+              <option>And with strange aeons</option>
+              <option>even death may die.</option>
+            </select>
+            <select>
+              <option>示例选项长 - EXAMPLE</option>
+              <option>那是很多年前的事了</option>
+              <option>有人用剪刀把时间线剪断</option>
+              <option>明天和昨天就连在一起了</option>
+              <option>我知道明天会发生什么</option>
+              <option>沙丁鱼从地里钻了出来</option>
+              <option>车站的月台开了个大洞</option>
+              <option>地上的木地板也消失了</option>
+              <option>昨天的记忆已淡然逝去</option>
+              <option>但何为逝去也不太清楚</option>
+              <option>天空之上大厦而立</option>
+              <option>眼睛什么都看不见了</option>
+            </select>
+          </div>
+
+          <hr class="sysHR" />
+          <div class="flex-container">
+            <h3>主题</h3>
           </div>
 
           <!-- 主题预设工具栏 -->
-          <div class="k3rn-dropdown-extension_block flex-container k3rn-theme-toolbar">
+          <div class="flex-container k3rn-theme-toolbar">
             <select v-model="settings.currentTheme" class="k3rn-theme-select" title="切换主题预设">
               <option :value="DEFAULT_THEME_NAME">{{ `默认 (内置)` }}</option>
               <option v-for="t in settings.themes" :key="t.name" :value="t.name">
@@ -27,7 +52,7 @@
               @click="renameCurrentTheme"
             ></div>
             <div
-              class="menu_button fa-solid fa-trash-can"
+              class="menu_button red_button fa-solid fa-trash-can"
               :class="{ disabled: isDefaultTheme }"
               title="删除当前主题"
               @click="deleteCurrentTheme"
@@ -41,14 +66,14 @@
             <input ref="fileInputRef" type="file" accept=".json" style="display: none" @change="handleFileImport" />
           </div>
 
-          <div v-if="isDefaultTheme" class="k3rn-dropdown-extension_block flex-container">
-            <div class="k3rn-readonly-tip">
+          <div v-if="isDefaultTheme" class="flex-container">
+            <div class="info-block warning">
               <i class="fa-solid fa-lock"></i>
               <span>内置主题为只读。点击上方 <b>+</b> 号以基于此主题创建新主题。</span>
             </div>
           </div>
 
-          <div class="k3rn-dropdown-extension_block flex-container">
+          <div class="flex-container">
             <label for="k3rn-dropdown-extension-setting">{{ `主题色表 - 随酒馆主题变动` }}</label>
             <br />
             <span>CSS使用例：<code>var(--SmartThemeBodyColor)</code></span>
@@ -87,7 +112,7 @@
             </div>
           </div>
 
-          <div class="k3rn-dropdown-extension_block flex-container">
+          <div class="flex-container">
             <textarea
               v-model="settings.style"
               :readonly="isDefaultTheme"
@@ -96,47 +121,15 @@
             ></textarea>
           </div>
 
-          <div class="k3rn-dropdown-extension_block flex-container">
-            <input
-              class="menu_button"
-              type="submit"
-              :value="isDefaultTheme ? `重置默认` : `恢复默认`"
-              @click="fillOverrideWithDefaults"
-            />
-          </div>
-
           <hr class="sysHR" />
-
-          <div class="k3rn-dropdown-extension_block flex-container">
+          <div class="flex-container">
+            <h3>选项</h3>
+          </div>
+          <div class="flex-container">
             <label class="checkbox_label" type="checkbox" title="开启后将接管所有 Select2 下拉框">
               <input v-model="settings.overrideSelect2" type="checkbox" />
               <span>接管Select2：如世界书多选框</span>
             </label>
-          </div>
-          <hr class="sysHR" />
-
-          <div class="k3rn-dropdown-extension_block flex-container">
-            <select>
-              <option>示例选项 - EXAMPLE</option>
-              <option>That is not dead</option>
-              <option>which can eternal lie,</option>
-              <option>And with strange aeons</option>
-              <option>even death may die.</option>
-            </select>
-            <select>
-              <option>示例选项(长) - EXAMPLE</option>
-              <option>那是很多年前的事了</option>
-              <option>有人用剪刀把时间线剪断</option>
-              <option>明天和昨天就连在一起了</option>
-              <option>我知道明天会发生什么</option>
-              <option>沙丁鱼从地里钻了出来</option>
-              <option>车站的月台开了个大洞</option>
-              <option>地上的木地板也消失了</option>
-              <option>昨天的记忆已淡然逝去</option>
-              <option>但何为逝去也不太清楚</option>
-              <option>天空之上大厦而立</option>
-              <option>眼睛什么都看不见了</option>
-            </select>
           </div>
         </div>
       </div>
@@ -146,52 +139,20 @@
 
 <script setup lang="ts">
 import { storeToRefs } from 'pinia';
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import { DEFAULT_STYLE, DEFAULT_THEME_NAME, ThemeImportSchema, useConfigStore } from './conf';
 
 const { settings } = storeToRefs(useConfigStore());
 
 const isDefaultTheme = computed(() => settings.value.currentTheme === DEFAULT_THEME_NAME);
 
-// 监听当前主题切换，自动载入对应样式
-watch(
-  () => settings.value.currentTheme,
-  newTheme => {
-    if (newTheme === DEFAULT_THEME_NAME) {
-      settings.value.style = DEFAULT_STYLE;
-    } else {
-      const found = settings.value.themes.find(t => t.name === newTheme);
-      if (found) {
-        settings.value.style = found.style;
-      }
-    }
-  },
-);
-
-// 监听 textarea 样式修改，若当前为自定义主题，实时同步回自定义主题列表中
-watch(
-  () => settings.value.style,
-  newStyle => {
-    if (isDefaultTheme.value) return;
-    const found = settings.value.themes.find(t => t.name === settings.value.currentTheme);
-    if (found && found.style !== newStyle) {
-      found.style = newStyle;
-    }
-  },
-);
-
-const getSillyTavern = (): any => {
-  return (
-    (window as any).SillyTavern ||
-    (window.parent as any)?.SillyTavern ||
-    (typeof SillyTavern !== 'undefined' ? SillyTavern : undefined)
-  );
-};
-
 const callPopupInput = async (title: string, defaultValue = ''): Promise<string | null> => {
-  const st = getSillyTavern();
-  if (st && typeof st.callGenericPopup === 'function' && st.POPUP_TYPE?.INPUT !== undefined) {
-    const res = await st.callGenericPopup(title, st.POPUP_TYPE.INPUT, defaultValue, {
+  if (
+    SillyTavern &&
+    typeof SillyTavern.callGenericPopup === 'function' &&
+    SillyTavern.POPUP_TYPE?.INPUT !== undefined
+  ) {
+    const res = await SillyTavern.callGenericPopup(title, SillyTavern.POPUP_TYPE.INPUT, defaultValue, {
       okButton: '确定',
       cancelButton: '取消',
     });
@@ -205,13 +166,16 @@ const callPopupInput = async (title: string, defaultValue = ''): Promise<string 
 };
 
 const callPopupConfirm = async (message: string, okText = '确定', cancelText = '取消'): Promise<boolean> => {
-  const st = getSillyTavern();
-  if (st && typeof st.callGenericPopup === 'function' && st.POPUP_TYPE?.CONFIRM !== undefined) {
-    const res = await st.callGenericPopup(message, st.POPUP_TYPE.CONFIRM, '', {
+  if (
+    SillyTavern &&
+    typeof SillyTavern.callGenericPopup === 'function' &&
+    SillyTavern.POPUP_TYPE?.CONFIRM !== undefined
+  ) {
+    const res = await SillyTavern.callGenericPopup(message, SillyTavern.POPUP_TYPE.CONFIRM, '', {
       okButton: okText,
       cancelButton: cancelText,
     });
-    return res === st.POPUP_RESULT?.AFFIRMATIVE || res === 1 || res === true;
+    return res === SillyTavern.POPUP_RESULT?.AFFIRMATIVE || res === 1 || res === true;
   }
   return window.confirm(message);
 };
@@ -269,7 +233,7 @@ const deleteCurrentTheme = async () => {
   settings.value.themes = settings.value.themes.filter(t => t.name !== themeName);
   settings.value.currentTheme = DEFAULT_THEME_NAME;
   settings.value.style = DEFAULT_STYLE;
-  toastr.success(`已删除主题 "${themeName}"，已恢复为默认主题！`);
+  toastr.success(`已删除主题 "${themeName}"，恢复为默认主题！`);
 };
 
 const exportCurrentTheme = () => {
@@ -284,7 +248,7 @@ const exportCurrentTheme = () => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `k3rn-dropdown-theme-${encodeURIComponent(currentName)}.json`;
+  a.download = `下拉选项主题-${currentName}.json`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -327,7 +291,7 @@ const handleFileImport = async (e: Event) => {
     const rawName =
       parsed.data.name?.trim() ||
       file.name
-        .replace(/^k3rn-dropdown-theme-/, '')
+        .replace(/^下拉选项主题-/, '')
         .replace(/\.json$/i, '')
         .trim() ||
       '导入主题';
@@ -364,40 +328,27 @@ const handleFileImport = async (e: Event) => {
     toastr.success(`主题 "${targetName}" 导入成功！`);
   } catch (err) {
     console.error(err);
-    toastr.error('导入主题时发生未知错误！');
+    toastr.error('导入主题时发生错误，请查看控制台！');
   } finally {
     target.value = '';
   }
 };
-
-const fillOverrideWithDefaults = async () => {
-  if (isDefaultTheme.value) {
-    settings.value.style = DEFAULT_STYLE;
-    toastr.success('已是默认样式！');
-    return;
-  }
-
-  const confirmed = await callPopupConfirm('确定将当前主题的内容重置为内置默认样式吗？', '重置', '取消');
-  if (!confirmed) return;
-
-  settings.value.style = DEFAULT_STYLE;
-  const found = settings.value.themes.find(t => t.name === settings.value.currentTheme);
-  if (found) {
-    found.style = DEFAULT_STYLE;
-  }
-  toastr.success('当前主题已重置为默认样式！');
-};
 </script>
 
 <style scoped>
-select {
-  border: 2px rgba(128, 128, 128, 0.5) solid !important;
+.info-block.warning {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
 }
+/* select {
+  border: 2px rgba(128, 128, 128, 0.5) solid !important;
+} */
 
 .k3rn-theme-toolbar {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  align-items: baseline;
+  gap: 5px;
   flex-wrap: wrap;
 }
 
@@ -406,7 +357,7 @@ select {
   min-width: 120px;
 }
 
-.k3rn-theme-toolbar .menu_button {
+/* .k3rn-theme-toolbar .menu_button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -416,14 +367,14 @@ select {
   cursor: pointer;
   flex-shrink: 0;
   border-radius: 4px;
-}
+} */
 
-.k3rn-theme-toolbar .menu_button.disabled {
+/* .k3rn-theme-toolbar .menu_button.disabled {
   opacity: 0.35;
   cursor: not-allowed;
   pointer-events: none;
-}
-
+} */
+/*
 .k3rn-readonly-tip {
   display: flex;
   align-items: center;
@@ -442,7 +393,7 @@ select {
   color: #ffc107;
   font-size: 1.1em;
   flex-shrink: 0;
-}
+} */
 
 textarea.is-readonly {
   opacity: 0.8;
