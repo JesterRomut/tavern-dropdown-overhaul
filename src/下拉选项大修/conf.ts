@@ -6,8 +6,7 @@ export const SCROLL_NAMESPACE = 'k3rn-dropdown-scroll';
 
 export const SEARCH_THRESHOLD = 7; // 7是完美的数字哦 阿门
 
-export const DEFAULT_STYLE = `
-#${DROPDOWN_ID} {
+export const DEFAULT_STYLE = `#${DROPDOWN_ID} {
     margin: 0;
     position: absolute;
     z-index: 2147483648 !important;
@@ -122,40 +121,75 @@ export const DEFAULT_STYLE = `
 }
 `;
 
+export const ThemePreset = z.object({
+  name: z.string().min(1, '主题名称不能为空'),
+  style: z.string(),
+});
+export type ThemePreset = z.infer<typeof ThemePreset>;
+
+export const ThemeImportSchema = z.object({
+  name: z.string().optional(),
+  style: z.string({ message: '主题 JSON 中必须包含 style 字段' }),
+});
+export type ThemeImportSchema = z.infer<typeof ThemeImportSchema>;
+
+export const DEFAULT_THEME_NAME = '默认';
+
 export const Config = z
   .object({
+    currentTheme: z.string().default(DEFAULT_THEME_NAME),
+    themes: z.array(ThemePreset).default([]),
     style: z.string().default(DEFAULT_STYLE),
     overrideSelect2: z.boolean().default(true),
   })
   .prefault({});
 
 export const useConfigStore = defineStore('settings', () => {
-  const settings = ref(Config.parse(getVariables({ type: 'script', script_id: getScriptId() })));
+  let initial = Config.parse(getVariables({ type: 'script', script_id: getScriptId() }));
 
-  watchEffect(() => {
-    insertOrAssignVariables(klona(settings.value), { type: 'script', script_id: getScriptId() });
-    injectGlobalStyles();
-  });
+  // 向下兼容：如果 themes 为空但已有 style 与 DEFAULT_STYLE 不同，自动迁入一个“我的主题”
+  if (initial.themes.length === 0 && initial.style && initial.style.trim() !== DEFAULT_STYLE.trim()) {
+    initial = {
+      ...initial,
+      currentTheme: '我的主题',
+      themes: [{ name: '我的主题', style: initial.style }],
+    };
+  }
+
+  const settings = ref(initial);
+
+  watch(
+    () => settings.value,
+    val => {
+      insertOrAssignVariables(klona(val), { type: 'script', script_id: getScriptId() });
+      injectGlobalStyles();
+    },
+    { deep: true, immediate: true },
+  );
 
   return { settings };
 });
 
 export const isTakeOverSelect2Enabled = (): boolean => {
+  if (getActivePinia()) {
+    return useConfigStore()?.settings?.overrideSelect2;
+  }
   try {
-    return useConfigStore().settings.overrideSelect2;
-  } catch (_) {
-    try {
-      const vars = getVariables({ type: 'script', script_id: getScriptId() });
-      return Config.parse(vars).overrideSelect2;
-    } catch {
-      return true;
-    }
+    const vars = getVariables({ type: 'script', script_id: getScriptId() });
+    return Config.parse(vars).overrideSelect2;
+  } catch {
+    return true;
   }
 };
 
 export const injectGlobalStyles = () => {
   $(`#${STYLE_ID}`).remove();
-  $(
-    `<style id="${STYLE_ID}">${Config.parse(getVariables({ type: 'script', script_id: getScriptId() })).style ?? DEFAULT_STYLE}</style>`,
-  ).appendTo('head');
+  let styleContent = DEFAULT_STYLE;
+
+  if (getActivePinia()) {
+    styleContent = useConfigStore()?.settings?.style ?? DEFAULT_STYLE;
+  } else {
+    styleContent = Config.parse(getVariables({ type: 'script', script_id: getScriptId() })).style ?? DEFAULT_STYLE;
+  }
+  $(`<style id="${STYLE_ID}">${styleContent}</style>`).appendTo('head');
 };

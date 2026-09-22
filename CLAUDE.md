@@ -11,4 +11,5 @@
 
 还有，给我讲中文
 可以用jQuery
-我的Chrome有特别猎奇的bug，这段时间先用Edge
+也可以用Chrome DevTools MCP
+但我的Chrome有特别猎奇的bug，建议用Edge（launch.json里配置了mcp端口）
