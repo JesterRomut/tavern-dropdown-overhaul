@@ -27,6 +27,8 @@
  *
  * 此外，本模块会自动动态扫描并克隆宿主父窗口中的 `@font-face` 与字体 `@import` 规则到本页面 `<head>`，
  * 并将 `document.body.style.fontFamily` 同步设为 `--theme-font-family`。
+ *
+ * 噢对了，参考了数据库通用美化（这个有不显示高亮颜色的问题）和朋友的卡的正则
  */
 
 import { onMounted, onUnmounted } from 'vue';

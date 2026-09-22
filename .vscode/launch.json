@@ -33,6 +33,7 @@
         "src://tavern_helper_template/*": "${workspaceFolder}/*",
         "webpack://tavern_helper_template/*": "${workspaceFolder}/*"
       },
+      "runtimeArgs": ["--remote-debugging-port=9222"],
       "skipFiles": ["**/jquery*.min.js", "**/node_modules/**"]
     },
     {

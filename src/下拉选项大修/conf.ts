@@ -2,7 +2,7 @@ export const ACTIVE_CLASS = 'k3rn-dropdown-active';
 export const DROPDOWN_ID = 'k3rn-dropdown-global';
 export const STYLE_ID = `k3rn-dropdown-overhaul`;
 export const EVENT_NAMESPACE = 'k3rn-dropdown-overhaul';
-// export const SCROLL_NAMESPACE = 'k3rn-dropdown-scroll';
+export const SCROLL_NAMESPACE = 'k3rn-dropdown-scroll';
 
 export const SEARCH_THRESHOLD = 7; // 7是完美的数字哦 阿门
 
@@ -63,6 +63,10 @@ export const DEFAULT_STYLE = `
     padding: 8px 12px;
     cursor: pointer;
     transition: background 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-sizing: border-box;
 }
 #${DROPDOWN_ID} .option-item:hover {
     background: rgba(128,128,128,0.1);
@@ -71,6 +75,28 @@ export const DEFAULT_STYLE = `
     background: rgba(128,128,128,0.2);
     font-weight: bold;
     border-left: 3px solid var(--SmartThemeQuoteColor, #888);
+}
+#${DROPDOWN_ID}.is-multi .option-item::after {
+    content: '';
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    margin-left: 8px;
+    border: 1.5px solid rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+    box-sizing: border-box;
+}
+#${DROPDOWN_ID}.is-multi .option-item.selected::after {
+    content: '✓';
+    font-size: 11px;
+    font-weight: bold;
+    color: #fff;
+    background: var(--SmartThemeQuoteColor, #888);
+    border-color: var(--SmartThemeQuoteColor, #888);
 }
 #${DROPDOWN_ID} .no-results {
     padding: 12px;
