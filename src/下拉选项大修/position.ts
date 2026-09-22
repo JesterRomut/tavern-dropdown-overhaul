@@ -24,8 +24,8 @@ export const mountAndPositionDropdown = (
   const estimatedMaxHeight = 350;
   const spaceBelow = windowHeight - rect.bottom;
 
-  let top = 0;
-  let left = 0;
+  let top: number;
+  let left: number;
   let isDropUp = false;
 
   if ($dialog.length) {
