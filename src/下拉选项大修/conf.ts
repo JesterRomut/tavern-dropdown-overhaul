@@ -76,6 +76,11 @@ export const DEFAULT_STYLE = `
     font-weight: bold;
     border-left: 3px solid var(--SmartThemeQuoteColor, #888);
 }
+#${DROPDOWN_ID} .option-item.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
 #${DROPDOWN_ID}.is-multi .option-item::after {
     content: '';
     width: 14px;

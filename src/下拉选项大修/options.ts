@@ -31,9 +31,10 @@ export const buildDropdownOptions = (
 
     const text = $opt.text();
     const isSelected = $opt.is(':selected');
+    const isDisabled = $opt.is(':disabled') || Boolean($opt.prop('disabled'));
     const groupedClass = $groupHeader ? 'grouped' : '';
     const $item = $(
-      `<div class="option-item ${groupedClass} ${isSelected ? 'selected' : ''}"><span class="option-text">${text}</span></div>`,
+      `<div class="option-item ${groupedClass} ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}"><span class="option-text">${text}</span></div>`,
     );
 
     $item.data('type', 'option');
@@ -47,6 +48,7 @@ export const buildDropdownOptions = (
 
     $item.on('click', (e: JQuery.TriggeredEvent) => {
       e.stopPropagation();
+      if (isDisabled) return;
       const nativeSelect = $select[0] as HTMLSelectElement;
 
       if (isMulti) {

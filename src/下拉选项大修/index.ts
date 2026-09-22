@@ -25,8 +25,8 @@ export const getTargetDoc = (): Document => {
   return document;
 };
 
-// 专门接管的世界书 Select2 下拉框（#world_info 为多选，#world_editor_select 为单选）
-const WORLD_INFO_SELECT2_SELECTOR = '#world_info, #world_editor_select';
+// 匹配所有 Select2 的底层原生 select 元素
+const SELECT2_SELECTOR = 'select';
 
 const closeDropdown = () => {
   const doc = getTargetDoc();
@@ -147,6 +147,10 @@ const handleSelectTrigger = (e: JQuery.TriggeredEvent) => {
   const target = e.currentTarget as HTMLElement;
   const $select = $(target);
 
+  if ($select.is(':disabled') || Boolean($select.prop('disabled'))) {
+    return;
+  }
+
   // 如果已被 Select2 接管，跳过 mousedown，交由 select2 专属逻辑处理
   if ($select.hasClass('select2-hidden-accessible') || Boolean($select.data('select2'))) {
     return;
@@ -166,25 +170,29 @@ const init = () => {
   injectGlobalStyles();
   const targetDoc = getTargetDoc();
 
-  // 1. 接管世界书的两个 Select2 下拉框（#world_info 与 #world_editor_select）
+  // 1. 全面接管所有 Select2 下拉框（包括单选、多选及第三方插件/预设转换的 Select2）
   let isUnselecting = false;
-  $(targetDoc).on(`select2:unselect.${EVENT_NAMESPACE}`, WORLD_INFO_SELECT2_SELECTOR, () => {
+  $(targetDoc).on(`select2:unselect.${EVENT_NAMESPACE}`, SELECT2_SELECTOR, () => {
     isUnselecting = true;
     setTimeout(() => {
       isUnselecting = false;
     }, 100);
   });
 
-  $(targetDoc).on(`select2:opening.${EVENT_NAMESPACE}`, WORLD_INFO_SELECT2_SELECTOR, function (e) {
+  $(targetDoc).on(`select2:opening.${EVENT_NAMESPACE}`, SELECT2_SELECTOR, function (e) {
+    const $select = $(this);
+    if ($select.is(':disabled') || Boolean($select.prop('disabled'))) {
+      return;
+    }
+
     e.preventDefault();
     if (isUnselecting) {
       isUnselecting = false;
       return;
     }
 
-    const $select = $(this);
     const select2 = $select.data('select2');
-    const $anchor = select2?.$container || $select;
+    const $anchor = select2?.$container || $select.next('.select2-container') || $select;
 
     const isActive = $select.hasClass(ACTIVE_CLASS);
     closeDropdown();
@@ -241,7 +249,16 @@ const init = () => {
       !e.target.isConnected &&
       Boolean(
         $target.is('.select2-selection__choice, .select2-selection__choice *, .select2-container *') ||
-        $target.closest('.select2-container, .select2-selection__choice').length,
+        $target.closest('.select2-container, .select2-selection__choice').length ||
+        path.some(node => {
+          const el = node as HTMLElement;
+          return (
+            el?.classList &&
+            (el.classList.contains('select2-selection__choice') ||
+              el.classList.contains('select2-container') ||
+              el.classList.contains('select2-selection__choice__remove'))
+          );
+        }),
       );
 
     const isInsideAnchor = Boolean(
