@@ -12,11 +12,11 @@ import {
 
 const { settings } = storeToRefs(useConfigStore());
 
-const isDefaultTheme = computed(() => settings.value.currentTheme === DEFAULT_THEME_NAME);
+const isDefaultTheme = computed(() => settings.value.theme.current === DEFAULT_THEME_NAME);
 
 const isStyleModified = computed(() => {
   if (isDefaultTheme.value) return false;
-  const found = settings.value.themes.find(t => t.name === settings.value.currentTheme);
+  const found = settings.value.theme.customThemes.find(t => t.name === settings.value.theme.current);
   if (!found) return false;
   return normalizeStyle(found.style) !== normalizeStyle(settings.value.style);
 });
@@ -26,7 +26,7 @@ const saveCurrentTheme = () => {
     toastr.info('默认内置主题为只读，如需保存请点击 + 号创建新主题！');
     return;
   }
-  const found = settings.value.themes.find(t => t.name === settings.value.currentTheme);
+  const found = settings.value.theme.customThemes.find(t => t.name === settings.value.theme.current);
   if (found) {
     found.style = settings.value.style;
     toastr.success(`已保存当前样式至主题 "${found.name}"！`);
@@ -71,7 +71,7 @@ const createNewTheme = async () => {
   const name = await callPopupInput('请输入新主题名称：', '');
   if (!name) return;
 
-  if (name === DEFAULT_THEME_NAME || settings.value.themes.some(t => t.name === name)) {
+  if (name === DEFAULT_THEME_NAME || settings.value.theme.customThemes.some(t => t.name === name)) {
     toastr.warning(`主题名称 "${name}" 已存在，请使用其他名称！`);
     return;
   }
@@ -80,8 +80,8 @@ const createNewTheme = async () => {
     name,
     style: settings.value.style || DEFAULT_STYLE,
   };
-  settings.value.themes.push(newTheme);
-  settings.value.currentTheme = name;
+  settings.value.theme.customThemes.push(newTheme);
+  settings.value.theme.current = name;
   settings.value.style = newTheme.style;
   toastr.success(`已创建并切换至主题 "${name}"！`);
 };
@@ -91,20 +91,20 @@ const renameCurrentTheme = async () => {
     toastr.info('默认内置主题不能重命名！');
     return;
   }
-  const currentName = settings.value.currentTheme;
+  const currentName = settings.value.theme.current;
   const newName = await callPopupInput('请输入新名称：', currentName);
   if (!newName || newName === currentName) return;
 
-  if (newName === DEFAULT_THEME_NAME || settings.value.themes.some(t => t.name === newName)) {
+  if (newName === DEFAULT_THEME_NAME || settings.value.theme.customThemes.some(t => t.name === newName)) {
     toastr.warning(`主题名称 "${newName}" 已存在！`);
     return;
   }
 
-  const found = settings.value.themes.find(t => t.name === currentName);
+  const found = settings.value.theme.customThemes.find(t => t.name === currentName);
   if (found) {
     found.name = newName;
   }
-  settings.value.currentTheme = newName;
+  settings.value.theme.current = newName;
   toastr.success(`主题已重命名为 "${newName}"！`);
 };
 
@@ -113,18 +113,18 @@ const deleteCurrentTheme = async () => {
     toastr.info('默认内置主题不能删除！');
     return;
   }
-  const themeName = settings.value.currentTheme;
+  const themeName = settings.value.theme.current;
   const confirmed = await callPopupConfirm(`确定要删除主题 "${themeName}" 吗？`, '删除', '取消');
   if (!confirmed) return;
 
-  settings.value.themes = settings.value.themes.filter(t => t.name !== themeName);
-  settings.value.currentTheme = DEFAULT_THEME_NAME;
+  settings.value.theme.customThemes = settings.value.theme.customThemes.filter(t => t.name !== themeName);
+  settings.value.theme.current = DEFAULT_THEME_NAME;
   settings.value.style = DEFAULT_STYLE;
   toastr.success(`已删除主题 "${themeName}"，恢复为默认主题！`);
 };
 
 const exportCurrentTheme = () => {
-  const currentName = settings.value.currentTheme;
+  const currentName = settings.value.theme.current;
   const currentStyle = isDefaultTheme.value ? DEFAULT_STYLE : settings.value.style;
   const data = {
     name: currentName,
@@ -189,7 +189,7 @@ const handleFileImport = async (e: Event) => {
       targetName = `${rawName} (自定义)`;
     }
 
-    const existingIndex = settings.value.themes.findIndex(t => t.name === targetName);
+    const existingIndex = settings.value.theme.customThemes.findIndex(t => t.name === targetName);
     if (existingIndex !== -1) {
       const overwrite = await callPopupConfirm(
         `已存在同名主题 "${targetName}"，是否覆盖？点击“取消”将自动重命名导入。`,
@@ -197,20 +197,20 @@ const handleFileImport = async (e: Event) => {
         '重命名导入',
       );
       if (overwrite) {
-        settings.value.themes[existingIndex].style = style;
+        settings.value.theme.customThemes[existingIndex].style = style;
       } else {
         let counter = 1;
-        while (settings.value.themes.some(t => t.name === `${targetName} (${counter})`)) {
+        while (settings.value.theme.customThemes.some(t => t.name === `${targetName} (${counter})`)) {
           counter++;
         }
         targetName = `${targetName} (${counter})`;
-        settings.value.themes.push({ name: targetName, style });
+        settings.value.theme.customThemes.push({ name: targetName, style });
       }
     } else {
-      settings.value.themes.push({ name: targetName, style });
+      settings.value.theme.customThemes.push({ name: targetName, style });
     }
 
-    settings.value.currentTheme = targetName;
+    settings.value.theme.current = targetName;
     settings.value.style = style;
     toastr.success(`主题 "${targetName}" 导入成功！`);
   } catch (err) {
@@ -330,9 +330,9 @@ onBeforeUnmount(destroySelect2);
 
           <!-- 主题预设工具栏 -->
           <div class="flex-container k3rn-theme-toolbar">
-            <select v-model="settings.currentTheme" class="k3rn-theme-select" title="切换主题预设">
+            <select v-model="settings.theme.current" class="k3rn-theme-select" title="切换主题预设">
               <option :value="DEFAULT_THEME_NAME">{{ `默认 (内置)` }}</option>
-              <option v-for="t in settings.themes" :key="t.name" :value="t.name">
+              <option v-for="t in settings.theme.customThemes" :key="t.name" :value="t.name">
                 {{ t.name }}
               </option>
             </select>

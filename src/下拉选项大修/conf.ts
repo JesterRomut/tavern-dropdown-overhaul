@@ -6,6 +6,7 @@ export const SCROLL_NAMESPACE = 'k3rn-dropdown-scroll';
 
 export const SEARCH_THRESHOLD = 7; // 7是完美的数字哦 阿门
 
+export const DEFAULT_THEME_NAME = '默认';
 export const DEFAULT_STYLE = `#${DROPDOWN_ID} {
     margin: 0;
     position: absolute;
@@ -139,12 +140,14 @@ export const ThemeImportSchema = z.object({
 });
 export type ThemeImportSchema = z.infer<typeof ThemeImportSchema>;
 
-export const DEFAULT_THEME_NAME = '默认';
-
 export const Config = z
   .object({
-    currentTheme: z.string().default(DEFAULT_THEME_NAME),
-    themes: z.array(ThemePreset).default([]),
+    theme: z
+      .object({
+        current: z.string().default(DEFAULT_THEME_NAME),
+        customThemes: z.array(ThemePreset).default([]),
+      })
+      .prefault({}),
     style: z.string().default(DEFAULT_STYLE),
     overrideSelect2: z.boolean().default(true),
   })
@@ -157,21 +160,27 @@ export const normalizeStyle = (s?: string): string => {
 export const useConfigStore = defineStore('settings', () => {
   let initial = Config.parse(getVariables({ type: 'script', script_id: getScriptId() }));
 
-  // 1. 向下兼容：如果 themes 为空但已有 style 与 DEFAULT_STYLE 不同，自动迁入一个“我的主题”
-  if (initial.themes.length === 0 && initial.style && normalizeStyle(initial.style) !== normalizeStyle(DEFAULT_STYLE)) {
+  // 1. 向下兼容：如果 customThemes 为空但已有 style 与 DEFAULT_STYLE 不同，自动迁入一个“我的主题”
+  if (
+    initial.theme.customThemes.length === 0 &&
+    initial.style &&
+    normalizeStyle(initial.style) !== normalizeStyle(DEFAULT_STYLE)
+  ) {
     initial = {
       ...initial,
-      currentTheme: '我的主题',
-      themes: [{ name: '我的主题', style: initial.style }],
+      theme: {
+        current: '我的主题',
+        customThemes: [{ name: '我的主题', style: initial.style }],
+      },
     };
-  } else if (initial.currentTheme === DEFAULT_THEME_NAME) {
+  } else if (initial.theme.current === DEFAULT_THEME_NAME) {
     // 2. 如果当前选中的是默认主题，强制保证 style 与内置 DEFAULT_STYLE 严格一致，清理历史残留
     initial.style = DEFAULT_STYLE;
   } else {
     // 3. 如果当前选中的是自定义主题，若该主题在库中不存在则安全回退到默认；若存在且当前使用中 style 为空才载入库中样式
-    const found = initial.themes.find(t => t.name === initial.currentTheme);
+    const found = initial.theme.customThemes.find(t => t.name === initial.theme.current);
     if (!found) {
-      initial.currentTheme = DEFAULT_THEME_NAME;
+      initial.theme.current = DEFAULT_THEME_NAME;
       initial.style = DEFAULT_STYLE;
     } else if (!initial.style) {
       initial.style = found.style;
@@ -182,12 +191,12 @@ export const useConfigStore = defineStore('settings', () => {
 
   // 监听当前主题切换，从库中载入对应样式覆盖使用中样式（被动还原未保存修改）
   watch(
-    () => settings.value.currentTheme,
+    () => settings.value.theme.current,
     newTheme => {
       if (newTheme === DEFAULT_THEME_NAME) {
         settings.value.style = DEFAULT_STYLE;
       } else {
-        const found = settings.value.themes.find(t => t.name === newTheme);
+        const found = settings.value.theme.customThemes.find(t => t.name === newTheme);
         if (found) {
           settings.value.style = found.style;
         }
@@ -221,7 +230,7 @@ export const isTakeOverSelect2Enabled = (): boolean => {
 
 export const injectGlobalStyles = () => {
   $(`#${STYLE_ID}`).remove();
-  let styleContent = DEFAULT_STYLE;
+  let styleContent: string;
 
   if (getActivePinia()) {
     styleContent = useConfigStore()?.settings?.style ?? DEFAULT_STYLE;
