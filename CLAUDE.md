@@ -16,7 +16,6 @@
 @.cursor/rules/mcp.mdc
 
 debug必看，里面写了如何用Chrome DevTools MCP来实操浏览器
-建议用Edge（launch.json里配置了mcp端口）
 
 ---
 

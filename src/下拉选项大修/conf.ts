@@ -59,6 +59,7 @@ export const DEFAULT_STYLE = `#${DROPDOWN_ID} {
 }
 
 #${DROPDOWN_ID} .option-item {
+    position: relative;
     padding: 8px 12px;
     cursor: pointer;
     transition: background 0.1s;
