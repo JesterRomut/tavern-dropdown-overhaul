@@ -129,7 +129,7 @@ export type ThemePreset = z.infer<typeof ThemePreset>;
 
 export const ThemeImportSchema = z.object({
   name: z.string().optional(),
-  style: z.string({ message: '主题 JSON 中必须包含 style 字段' }),
+  style: z.string({ error: '主题 JSON 中必须包含 style 字段' }),
 });
 export type ThemeImportSchema = z.infer<typeof ThemeImportSchema>;
 

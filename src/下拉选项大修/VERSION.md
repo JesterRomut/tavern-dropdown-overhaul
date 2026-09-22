@@ -1,4 +1,8 @@
-# 更新日志
+# 下拉选项大修@Kernschmelze
+
+源码： [github.com/JesterRomut/tavern-dropdown-overhaul](https://github.com/JesterRomut/tavern-dropdown-overhaul)
+
+在线更新版，船新升级，版本不再滞后
 
 ## 2026.9.22
 

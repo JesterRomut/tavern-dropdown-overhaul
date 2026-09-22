@@ -10,6 +10,6 @@
 @.cursor/rules/mvu角色卡.mdc
 
 还有，给我讲中文
-可以用jQuery
+可以用jQuery和zod v4
 也可以用Chrome DevTools MCP
 但我的Chrome有特别猎奇的bug，建议用Edge（launch.json里配置了mcp端口）

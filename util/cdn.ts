@@ -2,230 +2,306 @@ export interface RequestOptions extends RequestInit {
   timeout?: number;
 }
 
-export class CDNManager {
-  private hosts: string[] = [
-    'https://cdn.jsdelivr.net',
-    'https://fastly.jsdelivr.net',
-    'https://gcore.jsdelivr.net',
-    'https://testingcf.jsdelivr.net',
-  ];
+export const DEFAULT_CDN_HOSTS = [
+  'https://cdn.jsdelivr.net',
+  'https://fastly.jsdelivr.net',
+  'https://gcore.jsdelivr.net',
+  'https://testingcf.jsdelivr.net',
+] as const;
 
-  private currentHost: string | null = null;
-  private isInitializing: Promise<string | null> | null = null;
-  private versionCache: Map<string, string> = new Map();
-  private versionPromises: Map<string, Promise<string | null>> = new Map();
+export interface CDNContext {
+  hosts: string[];
+  currentHost: string | null;
+  isInitializing: Promise<string | null> | null;
+  versionCache: Map<string, string>;
+  versionPromises: Map<string, Promise<string | null>>;
+}
 
-  /**
-   * 测速单个 Host (改用必定有 CORS 头的 npm 资源)
-   */
-  private async pingHost(host: string, timeout: number = 3000): Promise<string> {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeout);
+/**
+ * 工厂函数：创建带默认值的 CDN 状态上下文
+ */
+export function createCDNContext(options?: Partial<CDNContext>): CDNContext {
+  return {
+    hosts: options?.hosts ? [...options.hosts] : [...DEFAULT_CDN_HOSTS],
+    currentHost: options?.currentHost ?? null,
+    isInitializing: null,
+    versionCache: options?.versionCache ?? new Map(),
+    versionPromises: options?.versionPromises ?? new Map(),
+  };
+}
 
-    try {
-      // jsdelivr 对 /npm/... 路径默认配置了 Access-Control-Allow-Origin: *
-      const res = await fetch(`${host}/npm/jquery@3.7.1/package.json`, {
-        method: 'HEAD', // 只拉取请求头，极省流量
-        signal: controller.signal,
-        cache: 'no-store',
-      });
-
-      clearTimeout(timer);
-      if (res.ok) return host;
-      throw new Error(`Host responded with ${res.status}`);
-    } catch (err) {
-      clearTimeout(timer);
-      throw err;
-    }
+let sharedDefaultContext: CDNContext | null = null;
+function getDefaultContext(): CDNContext {
+  if (!sharedDefaultContext) {
+    sharedDefaultContext = createCDNContext();
   }
+  return sharedDefaultContext;
+}
 
-  public async getFastestHost(): Promise<string | null> {
-    if (this.currentHost) return this.currentHost;
-    if (this.isInitializing) return this.isInitializing;
+/**
+ * 测速单个 Host (改用必定有 CORS 头的 npm 资源)
+ */
+export async function pingHost(host: string, timeout: number = 3000): Promise<string> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
 
-    this.isInitializing = (async () => {
-      try {
-        const fastest = await Promise.any(this.hosts.map(host => this.pingHost(host)));
-        this.currentHost = fastest;
-        return fastest;
-      } catch {
-        this.currentHost = null;
-        return null;
-      } finally {
-        this.isInitializing = null;
-      }
-    })();
+  try {
+    const res = await fetch(`${host}/npm/jquery@3.7.1/package.json`, {
+      method: 'HEAD',
+      signal: controller.signal,
+      cache: 'no-store',
+    });
 
-    return this.isInitializing;
-  }
-
-  public async switchHost(failedHost?: string): Promise<string | null> {
-    if (failedHost && this.currentHost === failedHost) {
-      this.currentHost = null;
-    }
-    return this.getFastestHost();
-  }
-
-  public async fetch(pathAndRepo: string, options: RequestOptions = {}): Promise<Response> {
-    const { timeout = 5000, ...fetchOptions } = options;
-    const normalizedPath = pathAndRepo.startsWith('/') ? pathAndRepo : `/${pathAndRepo}`;
-
-    let host = await this.getFastestHost();
-    if (!host) {
-      throw new Error('[OZ-CDNManager] 没有可用的节点，可能已离线');
-    }
-
-    try {
-      return await this.fetchWithTimeout(`${host}${normalizedPath}`, fetchOptions, timeout);
-    } catch (err) {
-      console.warn(`[OZ-CDNManager] 节点 ${host} 不可用，正在启动后备隐藏节点`);
-
-      host = await this.switchHost(host);
-      if (!host) {
-        throw new Error('[OZ-CDNManager] 所有后备隐藏节点不可用');
-      }
-
-      return await this.fetchWithTimeout(`${host}${normalizedPath}`, fetchOptions, timeout);
-    }
-  }
-
-  private async fetchWithTimeout(url: string, options: RequestInit, timeout: number): Promise<Response> {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeout);
-
-    if (options.signal) {
-      options.signal.addEventListener('abort', () => controller.abort());
-    }
-
-    try {
-      const response = await fetch(url, {
-        ...options,
-        signal: controller.signal,
-      });
-
-      clearTimeout(timer);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error ${response.status}`);
-      }
-
-      return response;
-    } catch (error) {
-      clearTimeout(timer);
-      throw error;
-    }
-  }
-
-  /**
-   * 获取远程仓库最新版本/Tag（兼具实时探测、多源回退、防抖缓存及并发去重）
-   * 优先探测 GitHub 实时接口（API 与 Atom 订阅流）穿透缓存，最后降级由 jsDelivr 保底
-   */
-  public async fetchLatestVersion(repo: string, options: RequestOptions | number = {}): Promise<string | null> {
-    if (this.versionCache.has(repo)) {
-      return this.versionCache.get(repo)!;
-    }
-    if (this.versionPromises.has(repo)) {
-      return await this.versionPromises.get(repo)!;
-    }
-
-    const opts = typeof options === 'number' ? { timeout: options } : options;
-    const { timeout = 4000, ...fetchOptions } = opts;
-
-    const apis: {
-      url: string;
-      isXml?: boolean;
-      parser: (data: any) => string | null | undefined;
-    }[] = [
-      {
-        url: `https://api.github.com/repos/${repo}/tags?per_page=1`,
-        parser: (json: any) => json[0]?.name,
-      },
-      {
-        url: `https://github.com/${repo}/tags.atom`,
-        isXml: true,
-        parser: (text: string) => {
-          const match = text.match(/<entry>[\s\S]*?<title>\s*([^<\s]+)\s*<\/title>/i);
-          return match?.[1]?.trim() ?? null;
-        },
-      },
-      {
-        url: `https://data.jsdelivr.com/v1/packages/gh/${repo}`,
-        parser: (json: any) => json.tags?.latest || json.versions?.[0]?.version,
-      },
-    ];
-
-    const fetchPromise = (async () => {
-      for (const { url, isXml, parser } of apis) {
-        let timer: ReturnType<typeof setTimeout> | null = null;
-        try {
-          const controller = new AbortController();
-          timer = setTimeout(() => controller.abort(), timeout);
-
-          if (fetchOptions.signal) {
-            fetchOptions.signal.addEventListener('abort', () => controller.abort());
-          }
-
-          const bustUrl = `${url}${url.includes('?') ? '&' : '?'}_t=${Date.now()}`;
-          const res = await fetch(bustUrl, {
-            cache: 'no-store',
-            ...fetchOptions,
-            signal: controller.signal,
-            headers: {
-              ...(isXml
-                ? { Accept: 'application/atom+xml, application/xml, text/xml, */*' }
-                : { Accept: 'application/vnd.github+json, application/json, */*' }),
-              ...(fetchOptions.headers as Record<string, string>),
-            },
-          });
-
-          if (res.ok) {
-            const data = isXml ? await res.text() : await res.json();
-            const tag = parser(data);
-            if (tag) {
-              const trimmedTag = tag.trim();
-              console.info(`[OZ-CDNManager] 成功从 ${url} 探测到最新 Tag: ${trimmedTag}`);
-              this.versionCache.set(repo, trimmedTag);
-              return trimmedTag;
-            }
-          }
-        } catch (e) {
-          console.warn(`[OZ-CDNManager] 从 ${url} 探测最新版本失败:`, e);
-          continue;
-        } finally {
-          if (timer) clearTimeout(timer);
-        }
-      }
-      return null;
-    })();
-
-    this.versionPromises.set(repo, fetchPromise);
-    try {
-      return await fetchPromise;
-    } finally {
-      this.versionPromises.delete(repo);
-    }
-  }
-
-  /**
-   * 兼容旧命名的别名方法，直接代理到 fetchLatestVersion
-   */
-  public async fetchRemoteLatestRepoTag(repo: string, options: RequestOptions | number = {}): Promise<string | null> {
-    return this.fetchLatestVersion(repo, options);
-  }
-  public async fetchGitHub(repo: string, path: string, options: RequestOptions = {}) {
-    const version = await this.fetchLatestVersion(repo, options);
-    if (!version) {
-      return await this.fetch(`gh/${repo}@latest/${path}`);
-    }
-    return await this.fetch(`gh/${repo}@${version}/${path}`);
-  }
-
-  public reset(): void {
-    this.currentHost = null;
-    this.isInitializing = null;
-    this.versionCache.clear();
-    this.versionPromises.clear();
+    clearTimeout(timer);
+    if (res.ok) return host;
+    throw new Error(`Host responded with ${res.status}`);
+  } catch (err) {
+    clearTimeout(timer);
+    throw err;
   }
 }
 
-// export const cdnManager = new CDNManager();
+/**
+ * 获取当前最快的 CDN 镜像节点
+ */
+export async function getFastestHost(ctx: CDNContext = getDefaultContext()): Promise<string | null> {
+  if (ctx.currentHost) return ctx.currentHost;
+  if (ctx.isInitializing) return ctx.isInitializing;
+
+  ctx.isInitializing = (async () => {
+    try {
+      const fastest = await Promise.any(ctx.hosts.map(host => pingHost(host)));
+      ctx.currentHost = fastest;
+      return fastest;
+    } catch {
+      ctx.currentHost = null;
+      return null;
+    } finally {
+      ctx.isInitializing = null;
+    }
+  })();
+
+  return ctx.isInitializing;
+}
+
+/**
+ * 故障时切换节点
+ */
+export async function switchHost(failedHost?: string, ctx: CDNContext = getDefaultContext()): Promise<string | null> {
+  if (failedHost && ctx.currentHost === failedHost) {
+    ctx.currentHost = null;
+  }
+  return getFastestHost(ctx);
+}
+
+/**
+ * 带超时的 fetch 工具函数
+ */
+export async function fetchWithTimeout(url: string, options: RequestInit, timeout: number): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
+
+  if (options.signal) {
+    options.signal.addEventListener('abort', () => controller.abort());
+  }
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+
+    clearTimeout(timer);
+
+    if (!response.ok) {
+      throw new Error(`HTTP error ${response.status}`);
+    }
+
+    return response;
+  } catch (error) {
+    clearTimeout(timer);
+    throw error;
+  }
+}
+
+/**
+ * 独立请求：从 CDN 镜像拉取资源并自动在失败时故障转移
+ */
+export async function fetchFromCdn(
+  pathAndRepo: string,
+  options: RequestOptions = {},
+  ctx: CDNContext = getDefaultContext(),
+): Promise<Response> {
+  const { timeout = 5000, ...fetchOptions } = options;
+  const normalizedPath = pathAndRepo.startsWith('/') ? pathAndRepo : `/${pathAndRepo}`;
+
+  let host = await getFastestHost(ctx);
+  if (!host) {
+    throw new Error('[OZ-CDNManager] 没有可用的节点，可能已离线');
+  }
+
+  try {
+    return await fetchWithTimeout(`${host}${normalizedPath}`, fetchOptions, timeout);
+  } catch (err) {
+    console.warn(`[OZ-CDNManager] 节点 ${host} 不可用，正在启动后备隐藏节点`);
+
+    host = await switchHost(host, ctx);
+    if (!host) {
+      throw new Error('[OZ-CDNManager] 所有后备隐藏节点不可用');
+    }
+
+    return await fetchWithTimeout(`${host}${normalizedPath}`, fetchOptions, timeout);
+  }
+}
+
+// 用于 fetchLatestRepoTag 独立无 context 调用时的模块级缓存与并发控制
+const standaloneVersionCache = new Map<string, string>();
+const standaloneVersionPromises = new Map<string, Promise<string | null>>();
+
+/**
+ * 获取远程仓库最新版本/Tag（兼具实时探测、多源回退、防抖缓存及并发去重）
+ * 优先探测 GitHub 实时接口（API 与 Atom 订阅流）穿透缓存，最后降级由 jsDelivr 保底
+ */
+export async function fetchLatestRepoTag(
+  repo: string,
+  options: RequestOptions | number = {},
+  ctx?: CDNContext,
+): Promise<string | null> {
+  const cache = ctx ? ctx.versionCache : standaloneVersionCache;
+  const promises = ctx ? ctx.versionPromises : standaloneVersionPromises;
+
+  if (cache.has(repo)) {
+    return cache.get(repo)!;
+  }
+  if (promises.has(repo)) {
+    return await promises.get(repo)!;
+  }
+
+  const opts = typeof options === 'number' ? { timeout: options } : options;
+  const { timeout = 8000, ...fetchOptions } = opts;
+
+  const sources: {
+    url: string;
+    method?: string;
+    parser: (res: Response) => Promise<string | null | undefined> | string | null | undefined;
+  }[] = [
+    {
+      url: `https://api.github.com/repos/${repo}/tags?per_page=1`,
+      parser: async res => {
+        const json = await res.json();
+        return json[0]?.name;
+      },
+    },
+    {
+      url: `https://data.jsdelivr.com/v1/packages/gh/${repo}`,
+      parser: async res => {
+        const json = await res.json();
+        return json.tags?.latest || json.versions?.[0]?.version;
+      },
+    },
+    {
+      url: `https://testingcf.jsdelivr.net/gh/${repo}@latest/package.json`,
+      method: 'HEAD',
+      parser: res => res.headers.get('x-jsd-version'),
+    },
+  ];
+
+  const fetchPromise = (async () => {
+    const tasks = sources.map(async ({ url, method = 'GET', parser }) => {
+      let timer: ReturnType<typeof setTimeout> | null = null;
+      try {
+        const controller = new AbortController();
+        timer = setTimeout(() => controller.abort(), timeout);
+
+        if (fetchOptions.signal) {
+          fetchOptions.signal.addEventListener('abort', () => controller.abort());
+        }
+
+        const bustUrl = `${url}${url.includes('?') ? '&' : '?'}_t=${Date.now()}`;
+        const res = await fetch(bustUrl, {
+          method,
+          cache: 'no-store',
+          ...fetchOptions,
+          signal: controller.signal,
+          headers: {
+            Accept: 'application/vnd.github+json, application/json, */*',
+            ...(fetchOptions.headers as Record<string, string>),
+          },
+        });
+
+        if (!res.ok) {
+          throw new Error(`HTTP error ${res.status}`);
+        }
+
+        const tag = await parser(res);
+        if (!tag) {
+          throw new Error(`未解析到有效 Tag: ${url}`);
+        }
+
+        const trimmedTag = tag.trim();
+        console.info(`[OZ-CDNManager] 成功从 ${url} 探测到最新 Tag: ${trimmedTag}`);
+        return trimmedTag;
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
+    });
+
+    try {
+      const fastestTag = await Promise.any(tasks);
+      cache.set(repo, fastestTag);
+      return fastestTag;
+    } catch {
+      console.warn('[OZ-CDNManager] 所有探测源均未能获取到最新 Tag');
+      return null;
+    }
+  })();
+
+  promises.set(repo, fetchPromise);
+  try {
+    return await fetchPromise;
+  } finally {
+    promises.delete(repo);
+  }
+}
+
+/**
+ * 组装 GitHub 资源的 CDN 快照完整 URL（纯同步函数）
+ */
+export function getGitHubCdnUrl(
+  repo: string,
+  path: string,
+  tag?: string,
+  host: string = 'https://testingcf.jsdelivr.net',
+): string {
+  const version = tag ? `@${tag}` : '';
+  const cleanPath = encodeURI(path.replace(/^\/+/, ''));
+  const cleanHost = host.replace(/\/+$/, '');
+  return `${cleanHost}/gh/${repo}${version}/${cleanPath}`;
+}
+
+/**
+ * 快捷拉取 GitHub 资源
+ */
+export async function fetchGitHub(
+  repo: string,
+  path: string,
+  options: RequestOptions = {},
+  ctx?: CDNContext,
+): Promise<Response> {
+  const version = await fetchLatestRepoTag(repo, options, ctx);
+  const cleanPath = path.replace(/^\/+/, '');
+  if (!version) {
+    return await fetchFromCdn(`gh/${repo}@latest/${cleanPath}`, options, ctx);
+  }
+  return await fetchFromCdn(`gh/${repo}@${version}/${cleanPath}`, options, ctx);
+}
+
+/**
+ * 重置 CDN 状态
+ */
+export function resetCDNContext(ctx: CDNContext = getDefaultContext()): void {
+  ctx.currentHost = null;
+  ctx.isInitializing = null;
+  ctx.versionCache.clear();
+  ctx.versionPromises.clear();
+}
