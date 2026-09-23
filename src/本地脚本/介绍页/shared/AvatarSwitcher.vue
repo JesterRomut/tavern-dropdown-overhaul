@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { CDNClient, fetchGitHub, getFastestHost, resetCDNContext } from '@util/cdn';
 import _, { debounce } from 'lodash';
+import { onUnmounted } from 'vue';
 import { vTooltip } from './tooltip';
 
 const { path, cdn, manifest } = defineProps<{
@@ -165,12 +166,12 @@ async function confirmApplyAvatar(index: number) {
 }
 
 async function updateCharacterAvatar(blob: Blob) {
-  const charId = typeof getCurrentCharacterId === 'function' ? getCurrentCharacterId() : getCurrentCharacterName();
-  if (!charId) {
-    console.error('角色卡标识为null！');
+  const chrName = getCurrentCharacterName();
+  if (!chrName) {
+    console.error('角色卡名称为null！');
     return;
   }
-  await updateCharacterWith(charId, async character => {
+  await updateCharacterWith(chrName, async character => {
     character.avatar = blob;
     return character;
   });

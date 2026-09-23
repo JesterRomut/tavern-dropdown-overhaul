@@ -28,7 +28,7 @@ const UPDATE_BUTTON_NAME = (remoteVersion?: string) => (remoteVersion ? `更新�
 
 let updateContext: {
   conf: ValidConfig;
-  charId: string;
+  charName: string;
   localVersion: string;
   remoteVersion: string;
   repoTag: string;
@@ -95,10 +95,10 @@ function formatTimestamp(): string {
 /**
  * 获取当前角色绑定的主世界书名称（不包含附加世界书）
  */
-async function getCharacterWorldbookName(charId: string): Promise<string | null> {
+async function getCharacterWorldbookName(charName: string): Promise<string | null> {
   // 1. 尝试从 getCharWorldbookNames 获取 primary（主世界书）
   try {
-    const charWb = getCharWorldbookNames(charId);
+    const charWb = getCharWorldbookNames(charName);
     if (charWb?.primary) {
       return charWb.primary;
     }
@@ -167,7 +167,7 @@ async function backupWorldbook(wbName: string): Promise<string | null> {
 /**
  * 执行角色卡更新下载与替换
  */
-async function performUpdate(conf: ValidConfig, charId: string, remoteVersion: string, repoTag?: string) {
+async function performUpdate(conf: ValidConfig, charName: string, remoteVersion: string, repoTag?: string) {
   if (isUpdating) {
     toastr.warning('角色卡更新正在进行中！');
     return;
@@ -187,12 +187,12 @@ async function performUpdate(conf: ValidConfig, charId: string, remoteVersion: s
 
     const blob = await res.blob();
 
-    const importRes = await importRawCharacter(charId, blob);
+    const importRes = await importRawCharacter(charName, blob);
     if (importRes && !importRes.ok) {
       throw new Error(`角色卡导入失败 (HTTP ${importRes.status})`);
     }
 
-    await replaceCharacter(charId, { version: remoteVersion });
+    await replaceCharacter(charName, { version: remoteVersion });
 
     toastr.success(`角色卡已成功更新至 ${remoteVersion}！`, '更新成功');
     clearUpdateButton();
@@ -209,7 +209,7 @@ async function performUpdate(conf: ValidConfig, charId: string, remoteVersion: s
  */
 async function showUpdateModal(
   conf: ValidConfig,
-  charId: string,
+  charName: string,
   localVersion: string,
   remoteVersion: string,
   changelogText: string,
@@ -236,9 +236,9 @@ async function showUpdateModal(
   });
 
   if (result === SillyTavern.POPUP_RESULT.AFFIRMATIVE || result === 1 || result === true) {
-    const wbName = await getCharacterWorldbookName(charId);
+    const wbName = await getCharacterWorldbookName(charName);
     if (!wbName) {
-      await performUpdate(conf, charId, remoteVersion, repoTag);
+      await performUpdate(conf, charName, remoteVersion, repoTag);
       return;
     }
     const confirmResult = await SillyTavern.callGenericPopup(
@@ -271,9 +271,9 @@ async function showUpdateModal(
       }
       toastr.success(`世界书已备份为：${backupName}`, '备份成功');
 
-      await performUpdate(conf, charId, remoteVersion, repoTag);
+      await performUpdate(conf, charName, remoteVersion, repoTag);
     } else if (isDirectUpdate) {
-      await performUpdate(conf, charId, remoteVersion, repoTag);
+      await performUpdate(conf, charName, remoteVersion, repoTag);
     }
   }
 }
@@ -283,8 +283,8 @@ async function showUpdateModal(
  */
 async function checkUpdate(conf: ValidConfig) {
   try {
-    const charId = typeof getCurrentCharacterId === 'function' ? getCurrentCharacterId() : getCurrentCharacterName();
-    if (!charId) {
+    const charName = getCurrentCharacterName();
+    if (!charName) {
       console.warn('[自动更新] 当前未选择角色卡，跳过更新检查');
       clearUpdateButton();
       return;
@@ -311,7 +311,7 @@ async function checkUpdate(conf: ValidConfig) {
     }
 
     const remoteVersion = cleanVersion(rawRemoteVersion);
-    const character = await getCharacter(charId);
+    const character = await getCharacter(charName);
     const localVersion = character.version || (character as any).character_version || '0.0.0';
 
     // 4. 对比角色卡自身版本（如 0.0.1 < 0.0.2）
@@ -319,7 +319,7 @@ async function checkUpdate(conf: ValidConfig) {
       console.info(`[自动更新] 发现角色卡新版本: v${remoteVersion} (当前: v${localVersion}, 仓库Tag: ${repoTag})`);
       updateContext = {
         conf,
-        charId,
+        charName,
         localVersion,
         remoteVersion,
         repoTag,
@@ -337,7 +337,7 @@ async function checkUpdate(conf: ValidConfig) {
           if (updateContext) {
             await showUpdateModal(
               updateContext.conf,
-              updateContext.charId,
+              updateContext.charName,
               updateContext.localVersion,
               updateContext.remoteVersion,
               updateContext.changelogText,
