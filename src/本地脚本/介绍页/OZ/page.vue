@@ -6,10 +6,13 @@ import { vTooltip } from '../shared/tooltip';
 import InfoSwipe from './InfoSwipe.vue';
 
 import { starts } from '../shared/starts';
-import { format } from '../shared/util';
+import { useParentTheme } from '../shared/theme';
+import { format, splitPages } from '../shared/util';
 import about1 from './about1.md';
 
 const cdn = createCDNContext();
+
+useParentTheme();
 // const blobUrl: Ref<string | null> = ref(null)
 
 // async function loadBackground(){
@@ -55,7 +58,7 @@ const cdn = createCDNContext();
       <br />
       商业化禁止
     </p> -->
-    <InfoSwipe :pages="[format(about1, { max_swipes: starts.length + 1 }), ]"></InfoSwipe>
+    <InfoSwipe :pages="splitPages(format(about1, { max_swipes: starts.length + 1 }))"></InfoSwipe>
     <footer>
       <h1>OZ</h1>
       <h2>- In my dreams I'm beautiful... and bad. -</h2>
@@ -77,7 +80,10 @@ export default {
   --oz-highlight: mediumpurple;
 }
 main {
-  /* background: linear-gradient(160deg, rgba(45, 45, 45, 0.75), rgba(35, 35, 35, 0.85)); */
+  /* background: linear-gradient(16
+  0deg, rgba(45, 45, 45, 0.75), rgba(35, 35, 35, 0.85)); */
+
+  font-family: var(--theme-font-family);
   background-image:
     linear-gradient(122deg, rgb(10, 10, 10), rgba(35, 35, 35, 0.85)),
     url('https://cdn.jsdelivr.net/gh/JesterRomut/tavern-resources@main/character/OZ/cover_background.png');
@@ -118,6 +124,7 @@ main {
 
 code {
   background-color: black;
+  font-family: var(--theme-code-font-family);
 }
 
 @media screen and (max-width: 600px) {

@@ -101,16 +101,42 @@ function onTouchEnd(e: TouchEvent) {
 
     .swipe-page {
       width: 100%;
-      line-height: 1.5;
+      line-height: 1.6;
 
       :deep(p) {
-        margin: 0.4rem 0;
+        margin: 0.5rem 0;
+      }
+
+      :deep(ol) {
+        list-style-type: decimal;
+        padding-left: 1.5rem;
+        margin: 0.5rem 0;
+
+        li {
+          margin: 0.25rem 0;
+        }
+      }
+
+      :deep(ul) {
+        list-style-type: disc;
+        padding-left: 1.5rem;
+        margin: 0.5rem 0;
+
+        li {
+          margin: 0.25rem 0;
+        }
       }
 
       :deep(code) {
         background-color: black;
         padding: 0.1rem 0.3rem;
         border-radius: 3px;
+      }
+
+      :deep(a) {
+        color: var(--oz-highlight, mediumpurple);
+        text-decoration: underline;
+        word-break: break-all;
       }
     }
   }

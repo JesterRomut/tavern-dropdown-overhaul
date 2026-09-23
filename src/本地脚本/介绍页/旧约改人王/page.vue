@@ -3,8 +3,10 @@ import { createCDNContext } from '@util/cdn';
 import AvatarSwitcher from '../shared/AvatarSwitcher.vue';
 import { starts } from '../shared/starts';
 import StartsBrowser from '../shared/StartsBrowser.vue';
+import { useParentTheme } from '../shared/theme';
 
 const cdn = createCDNContext();
+useParentTheme();
 </script>
 
 <template>
@@ -41,6 +43,7 @@ const cdn = createCDNContext();
   --oz-highlight: salmon;
 }
 main {
+  font-family: var(--theme-font-family);
   /* background: linear-gradient(160deg, rgba(45, 45, 45, 0.75), rgba(35, 35, 35, 0.85)); */
   background-image:
     linear-gradient(122deg, rgb(10, 10, 10), rgba(35, 35, 35, 0.85)),
@@ -82,6 +85,8 @@ main {
 
 code {
   background-color: black;
+
+  font-family: var(--theme-code-font-family);
 }
 
 @media screen and (max-width: 600px) {

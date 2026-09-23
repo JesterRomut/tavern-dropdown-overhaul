@@ -6,11 +6,12 @@
  * ### 导出的 CSS 变量清单 (`--theme-*`)：
  *
  * #### 1. 排版与字体 (Typography)
- * - `--theme-font-family`    : 宿主正文渲染字体族（优先获取 `.mes_text`，回退至 `body`）
- * - `--theme-font-size`      : 宿主正文字号（优先获取 `--mainFontSize`，回退至 `.mes_text` 计算值）
- * - `--theme-font-weight`    : 宿主正文字重（优先获取 `--mainFontWeight`，回退至 `.mes_text` 计算值）
- * - `--theme-line-height`    : 宿主正文行高比例（获取自 `.mes_text`）
- * - `--theme-letter-spacing` : 宿主正文字间距（获取自 `.mes_text`）
+ * - `--theme-font-family`      : 宿主正文渲染字体族（优先获取 `.mes_text`，回退至 `body`）
+ * - `--theme-code-font-family` : 宿主代码块渲染字体族（优先获取 `.mes_text code` / `code`，回退至 `--font-mono` / `--monoFontFamily`）
+ * - `--theme-font-size`        : 宿主正文字号（优先获取 `--mainFontSize`，回退至 `.mes_text` 计算值）
+ * - `--theme-font-weight`      : 宿主正文字重（优先获取 `--mainFontWeight`，回退至 `.mes_text` 计算值）
+ * - `--theme-line-height`      : 宿主正文行高比例（获取自 `.mes_text`）
+ * - `--theme-letter-spacing`   : 宿主正文字间距（获取自 `.mes_text`）
  *
  * #### 2. 主题外观色 (SmartTheme Colors)
  * - `--theme-body-color`       : 宿主背景基色（`--SmartThemeBodyColor`）
@@ -24,6 +25,7 @@
  * - `--SmartThemeQuoteColor`
  * - `--SmartThemeBlurTintColor`
  * - `--SmartThemeEmColor`
+ * - `--monoFontFamily`
  *
  * 此外，本模块会自动动态扫描并克隆宿主父窗口中的 `@font-face` 与字体 `@import` 规则到本页面 `<head>`，
  * 并将 `document.body.style.fontFamily` 同步设为 `--theme-font-family`。
@@ -277,7 +279,7 @@ export function syncParentFontStyles(targetWindow?: Window | null): void {
 
       // 提取文本中的 @font-face（当该 style 节点尚未解析或 cssRules 不可用时的兜底）
       if (text.includes('@font-face')) {
-        let hasLoadedRules = false;
+        let hasLoadedRules: boolean;
         try {
           hasLoadedRules = Boolean(node.sheet && node.sheet.cssRules);
         } catch {
@@ -374,6 +376,22 @@ export function syncParentTheme(): void {
       if (document.body) {
         document.body.style.fontFamily = fontFamily;
       }
+    }
+
+    const codeTarget = pDoc.querySelector('.mes_text code, .mes_text pre') || pDoc.querySelector('code, pre');
+    let codeFontFamily = codeTarget ? pw.getComputedStyle(codeTarget).fontFamily : '';
+    if (!codeFontFamily && (target || pBody)) {
+      const temp = pDoc.createElement('code');
+      (target || pBody).appendChild(temp);
+      codeFontFamily = pw.getComputedStyle(temp).fontFamily;
+      temp.remove();
+    }
+    if (!codeFontFamily) {
+      codeFontFamily = getProp('--font-mono') || getProp('--monoFontFamily');
+    }
+    if (codeFontFamily) {
+      root.style.setProperty('--theme-code-font-family', codeFontFamily);
+      root.style.setProperty('--monoFontFamily', codeFontFamily);
     }
 
     const fontSize = getProp('--mainFontSize') || targetStyle?.fontSize || bodyStyle?.fontSize || '';
@@ -478,10 +496,10 @@ export function watchParentTheme(options?: { debounceMs?: number }): () => void 
  * 注入并同步宿主酒馆主题与排版（向后兼容接口）
  *
  * 会在当前文档 `:root` 注入以下 CSS 变量：
- * - 排版：`--theme-font-family`, `--theme-font-size`, `--theme-font-weight`, `--theme-line-height`, `--theme-letter-spacing`
+ * - 排版：`--theme-font-family`, `--theme-code-font-family`, `--theme-font-size`, `--theme-font-weight`, `--theme-line-height`, `--theme-letter-spacing`
  * - 颜色：`--theme-text-color`, `--theme-text-dim`, `--theme-text-muted`, `--theme-border-color`
  * - 外观：`--theme-body-color`, `--theme-quote-color`, `--theme-blur-tint-color`, `--theme-em-color`, `--theme-chat-tint-color`
- * - 兼容变量：`--SmartThemeBodyColor`, `--SmartThemeQuoteColor`, `--SmartThemeBlurTintColor`,  `--SmartThemeEmColor`
+ * - 兼容变量：`--SmartThemeBodyColor`, `--SmartThemeQuoteColor`, `--SmartThemeBlurTintColor`, `--SmartThemeEmColor`, `--monoFontFamily`
  */
 export function useParentTheme(options?: { debounceMs?: number }): void {
   let cleanup: (() => void) | null = null;
