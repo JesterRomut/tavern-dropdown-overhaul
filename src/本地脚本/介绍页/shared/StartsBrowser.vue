@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import _, { debounce } from 'lodash';
+import { watch } from 'vue';
 import NSFWIcon from './NSFWIcon.vue';
 import { Start, starts } from './starts';
 import StartTooltip from './StartTooltip.vue';
@@ -7,7 +8,6 @@ import { vTooltip } from './tooltip';
 import { changeGreeting } from './util';
 
 // TODO:标签排序
-// TODO:给开场加上内部辨识符
 
 const props = defineProps<{ path: string }>();
 
@@ -15,153 +15,109 @@ const PATH_TAGSTATES = `${props.path}.TagStates`;
 const PATH_SEARCHQUERY = `${props.path}.SearchQuery`;
 const PATH_FAVORITES = `${props.path}.Favorites`;
 const PATH_FAVORITEONLY = `${props.path}.FavoriteFilterState`;
-
 const PATH_OPEN = `${props.path}.Open`;
 
-function loadConvertedFavorites(): Set<number | string> {
-  const variables = getVariables({ type: 'global' });
-  const fav: (number | string)[] = _.get(variables, PATH_FAVORITES, []);
+// 读取初始状态（仅获取一次全局变量）
+const initialVars = getVariables({ type: 'global' });
 
+function loadConvertedFavorites(): Set<number | string> {
+  const fav: (number | string)[] = _.get(initialVars, PATH_FAVORITES, []);
   return new Set(
-    _.map(fav, value => {
+    fav.map(value => {
       if (typeof value !== 'number') return value;
-      const uid = starts[value - 1]?.uid;
-      if (!uid) return value;
-      return uid;
+      return starts[value - 1]?.uid ?? value;
     }),
   );
 }
 
-function loadFavoriteOnly(): boolean {
-  const variables = getVariables({ type: 'global' });
-  return _.get(variables, PATH_FAVORITEONLY, false);
-}
-
-function loadTagStates(): Record<string, number> {
-  const variables = getVariables({ type: 'global' });
-  return { ..._.get(variables, PATH_TAGSTATES, {}) };
-}
-
-function loadSearchQuery(): string {
-  const variables = getVariables({ type: 'global' });
-  return _.get(variables, PATH_SEARCHQUERY, '');
-}
-
-function loadOpen(): boolean {
-  const variables = getVariables({ type: 'global' });
-  return _.get(variables, PATH_OPEN, true);
-}
-
-// 4. 更新 saveStates 方法（在其中加入 Favorites 的持久化）
-function saveStates() {
-  const rawState = toRaw(tagStates.value);
-  const rawQuery = toRaw(searchQuery.value);
-  const rawFavorites = [...toRaw(favorites.value)];
-  const rawFavOnly = onlyFavorites.value;
-  const rawOpen = open.value;
-  const stateToSave = Object.fromEntries(Object.entries(rawState).filter(([_, value]) => value !== 0));
-  const variables = getVariables({ type: 'global' });
-  if (
-    _.isEqual(_.get(variables, PATH_TAGSTATES, {}), stateToSave) &&
-    _.isEqual(_.get(variables, PATH_SEARCHQUERY, ''), rawQuery) &&
-    _.isEqual(_.get(variables, PATH_FAVORITES, []), rawFavorites) &&
-    _.isEqual(_.get(variables, PATH_FAVORITEONLY, false), rawFavOnly) &&
-    _.isEqual(_.get(variables, PATH_OPEN, true), rawOpen)
-  )
-    return;
-  updateVariablesWith(
-    variables => {
-      if (_.isEmpty(stateToSave)) _.unset(variables, PATH_TAGSTATES);
-      else _.set(variables, PATH_TAGSTATES, stateToSave);
-      if (rawQuery === '') _.unset(variables, PATH_SEARCHQUERY);
-      else _.set(variables, PATH_SEARCHQUERY, rawQuery);
-      if (_.isEmpty(rawFavorites)) _.unset(variables, PATH_FAVORITES);
-      else _.set(variables, PATH_FAVORITES, rawFavorites);
-      if (!rawFavOnly) _.unset(variables, PATH_FAVORITEONLY);
-      else _.set(variables, PATH_FAVORITEONLY, rawFavOnly);
-      if (rawOpen) _.unset(variables, PATH_OPEN);
-      else _.set(variables, PATH_OPEN, rawOpen);
-      return variables;
-    },
-    { type: 'global' },
-  );
-
-  // replaceVariables(variables, { type: 'global' });
-  // if (rawQuery === '') {
-  //   deleteVariable(PATH_SEARCHQUERY, { type: 'global' });
-  // }
-  // if (rawFavorites.length === 0) {
-  //   deleteVariable(PATH_FAVORITES, { type: 'global' });
-  // }
-  // if (_.isEmpty(stateToSave)) {
-  //   deleteVariable(PATH_TAGSTATES, { type: 'global' });
-  // }
-  // if (!rawFavOnly) {
-  //   deleteVariable(PATH_FAVORITEONLY, { type: 'global' });
-  // }
-}
-
 const favorites = ref<Set<number | string>>(loadConvertedFavorites());
-const onlyFavorites = ref(loadFavoriteOnly()); // 收藏过滤器开关
-
-// function isFavorite(id: number): boolean;
-// function isFavorite(id: string): boolean;
-// function isFavorite(id: number | string){
-
-// }
-const isFavorite = (id: number, uid?: string) => {
-  if (uid) {
-    return favorites.value.has(id) || favorites.value.has(uid);
-  }
-  return favorites.value.has(id);
-};
-const toggleFavorite = (id: number, uid?: string) => {
-  if (uid && favorites.value.has(uid)) {
-    favorites.value.delete(uid);
-    return;
-  }
-  if (favorites.value.has(id)) {
-    favorites.value.delete(id);
-    return;
-  }
-  if (uid) {
-    favorites.value.add(uid);
-    return;
-  }
-
-  favorites.value.add(id);
-};
-
-const searchQuery = ref(loadSearchQuery());
+const onlyFavorites = ref<boolean>(_.get(initialVars, PATH_FAVORITEONLY, false));
+const searchQuery = ref<string>(_.get(initialVars, PATH_SEARCHQUERY, ''));
+const open = ref<boolean>(_.get(initialVars, PATH_OPEN, true));
 
 enum TagState {
   UNFILTERED = 0,
   INCLUDE = 1,
   EXCLUDE = -1,
 }
-const tagStates = ref<Record<string, TagState>>(loadTagStates());
+const tagStates = ref<Record<string, TagState>>({ ..._.get(initialVars, PATH_TAGSTATES, {}) });
+
+let isDirty = false;
+
+function saveStates() {
+  if (!isDirty) return;
+
+  const rawQuery = toRaw(searchQuery.value).trim();
+  const rawFavOnly = onlyFavorites.value;
+  const rawOpen = open.value;
+  const rawFavorites = [...toRaw(favorites.value)];
+  const stateToSave = Object.fromEntries(
+    Object.entries(toRaw(tagStates.value)).filter(([_, v]) => v !== 0 && v !== undefined),
+  );
+
+  const variables = getVariables({ type: 'global' });
+
+  // 优先原生 === 短路快速比对，全部相同时再进行 deep equal
+  const isSameQuery = rawQuery === _.get(variables, PATH_SEARCHQUERY, '');
+  const isSameFavOnly = rawFavOnly === _.get(variables, PATH_FAVORITEONLY, false);
+  const isSameOpen = rawOpen === _.get(variables, PATH_OPEN, true);
+  if (
+    isSameQuery &&
+    isSameFavOnly &&
+    isSameOpen &&
+    _.isEqual(_.get(variables, PATH_TAGSTATES, {}), stateToSave) &&
+    _.isEqual(_.get(variables, PATH_FAVORITES, []), rawFavorites)
+  ) {
+    isDirty = false;
+    return;
+  }
+
+  updateVariablesWith(
+    vars => {
+      const put = (key: string, val: any, isDef: boolean) => (isDef ? _.unset(vars, key) : _.set(vars, key, val));
+      put(PATH_TAGSTATES, stateToSave, _.isEmpty(stateToSave));
+      put(PATH_SEARCHQUERY, rawQuery, !rawQuery);
+      put(PATH_FAVORITES, rawFavorites, rawFavorites.length === 0);
+      put(PATH_FAVORITEONLY, rawFavOnly, !rawFavOnly);
+      put(PATH_OPEN, rawOpen, rawOpen);
+      return vars;
+    },
+    { type: 'global' },
+  );
+
+  isDirty = false;
+}
+
+const isFavorite = (id: number, uid?: string) => {
+  if (uid) return favorites.value.has(id) || favorites.value.has(uid);
+  return favorites.value.has(id);
+};
+
+const toggleFavorite = (id: number, uid?: string) => {
+  const target = uid ?? id;
+  if (favorites.value.has(id) || (uid && favorites.value.has(uid))) {
+    favorites.value.delete(id);
+    if (uid) favorites.value.delete(uid);
+  } else {
+    favorites.value.add(target);
+  }
+};
+
 const allTags = computed(() => {
-  let tags = new Set<string>();
-  starts.forEach(s => {
-    tags = tags.union(s.tags);
-  });
+  const tags = new Set<string>();
+  starts.forEach(s => s.tags.forEach(t => tags.add(t)));
   return [...tags].reverse();
 });
+
+const debouncedSave = debounce(saveStates, 3000);
 watch(
-  allTags,
-  tags => {
-    tags.forEach(tag => {
-      if (tagStates.value[tag] === undefined) {
-        tagStates.value[tag] = TagState.UNFILTERED;
-      }
-    });
+  [tagStates, searchQuery, favorites, onlyFavorites, open],
+  () => {
+    isDirty = true;
+    debouncedSave();
   },
-  { immediate: true },
+  { deep: true },
 );
-
-const open = ref(loadOpen());
-
-watch([tagStates, searchQuery, favorites, onlyFavorites, open], debounce(saveStates, 3000), { deep: true });
 
 $(window).on('pagehide', () => {
   saveStates();
@@ -170,30 +126,33 @@ $(window).on('pagehide', () => {
 const toggleInclude = (tag: string) => {
   tagStates.value[tag] = tagStates.value[tag] === 1 ? 0 : 1;
 };
-// 切换“排除(-1)”和“未选(0)”的双态
+
 const toggleExclude = (tag: string) => {
   tagStates.value[tag] = tagStates.value[tag] === -1 ? 0 : -1;
 };
 
 const filteredStarts = computed(() => {
-  const requiredTags = Object.keys(tagStates.value).filter(t => tagStates.value[t] === 1);
-  const excludedTags = Object.keys(tagStates.value).filter(t => tagStates.value[t] === -1);
+  const query = searchQuery.value.trim().toLowerCase();
+  const hasQuery = Boolean(query);
+  const reqTags = Object.keys(tagStates.value).filter(t => tagStates.value[t] === 1);
+  const excTags = Object.keys(tagStates.value).filter(t => tagStates.value[t] === -1);
+  const favOnly = onlyFavorites.value;
 
   return starts.filter(s => {
-    const matchName = s.name.toLowerCase().includes(searchQuery.value.toLowerCase());
-    const matchDesc = s.desc?.toLowerCase().includes(searchQuery.value.toLowerCase()) ?? false;
+    // 1. 若开启“仅看收藏”，非收藏项直接短路跳过
+    if (favOnly && !isFavorite(s.id, s.uid)) return false;
 
-    // 必须包含所有 requiredTags
-    const matchRequired = requiredTags.length === 0 || requiredTags.every(t => s.tags.has(t));
+    // 2. 必选标签：必须全部包含
+    if (reqTags.length > 0 && !reqTags.every(t => s.tags.has(t))) return false;
 
-    // 不能包含任何 excludedTags
-    const matchExcluded = excludedTags.length === 0 || !excludedTags.some(t => s.tags.has(t));
+    // 3. 排除标签：包含任意一个即剔除
+    if (excTags.length > 0 && excTags.some(t => s.tags.has(t))) return false;
 
-    const matchFavorite =
-      favorites.value.size > 0
-        ? !onlyFavorites.value || favorites.value.has(s.id) || favorites.value.has(s.uid ?? -1)
-        : true;
-    return (matchName || matchDesc) && matchRequired && matchExcluded && matchFavorite;
+    // 4. 搜索框文本匹配（没搜东西时直接放行，完全不跑字符串小写和匹配）
+    if (hasQuery) {
+      return s.name.toLowerCase().includes(query) || (s.desc?.toLowerCase().includes(query) ?? false);
+    }
+    return true;
   });
 });
 
@@ -286,9 +245,6 @@ export default {
 };
 </script>
 <style scoped lang="scss">
-@use 'section.scss';
-@use 'transition.scss';
-
 /* 搜索栏样式 */
 .search-bar {
   display: flex;
@@ -431,130 +387,112 @@ li.empty-moon {
     align-self: baseline;
   }
 }
-.oz-section {
-  .slide-fade-enter-from,
-  .slide-fade-leave-to {
-    ul {
-      height: unset;
-      max-height: 0px !important;
-    }
-  }
-
-  .slide-fade-enter-active,
-  .slide-fade-leave-active {
-    ul {
-      height: unset;
-    }
-  }
+.slide-fade-enter-from,
+.slide-fade-leave-to {
   ul {
-    height: 20rem;
-    max-height: 20rem;
-    overflow-x: auto;
+    height: unset;
+    max-height: 0px !important;
+  }
+}
 
-    scrollbar-gutter: stable;
+.slide-fade-enter-active,
+.slide-fade-leave-active {
+  ul {
+    height: unset;
+  }
+}
 
-    // padding-left: 0.5rem;
+ul {
+  height: 20rem;
+  max-height: 20rem;
+  overflow-x: auto;
+  scrollbar-gutter: stable;
 
-    // @media screen and (max-width: 600px) {
-    //   padding-left: 0;
-    // }
-    li.is-favorite {
-      background: color-mix(in srgb, var(--oz-highlight) 10%, transparent 90%);
-      > i:first-of-type {
-        color: color-mix(in srgb, var(--oz-highlight) 70%, transparent 30%);
-      }
-      > div:first-of-type > span:first-of-type {
-        border: 1px solid color-mix(in srgb, var(--oz-highlight) 60%, black 30%);
-      }
+  li.is-favorite {
+    background: color-mix(in srgb, var(--oz-highlight) 10%, transparent 90%);
+    > i:first-of-type {
+      color: color-mix(in srgb, var(--oz-highlight) 70%, transparent 30%);
     }
-    // @media screen and (min-width: 600px) {
-    //   > li.is-favorite:nth-child(odd) {
-    //     background: rgba(186, 156, 246, 0.16);
-    //   }
-    // }
-    li {
-      // display: flex;
-      // justify-content: flex-start;
-      // align-items: baseline;
-      @extend .noselect;
-      gap: 4px;
+    > div:first-of-type > span:first-of-type {
+      border: 1px solid color-mix(in srgb, var(--oz-highlight) 60%, black 30%);
+    }
+  }
+
+  li {
+    user-select: none;
+    gap: 4px;
+    cursor: pointer;
+    transition: 0.3s;
+    display: flex;
+    align-items: center;
+
+    > i:first-of-type {
+      margin-right: 0.5rem;
+      color: #ffffff44;
+      font-size: 0.95rem;
       cursor: pointer;
+      transition: all 0.2s ease;
+      margin-left: auto;
+      &:hover {
+        color: var(--oz-highlight);
+        transform: scale(1.2);
+      }
+    }
 
-      transition: 0.3s;
-
-      display: flex;
-      align-items: center;
-
+    > div:first-of-type {
+      flex-grow: 2;
+      padding: 0.5rem 0;
+      padding-left: 0.5rem;
       > i:first-of-type {
-        margin-right: 0.5rem;
-        color: #ffffff44;
-        font-size: 0.95rem;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        margin-left: auto;
-        &:hover {
-          color: var(--oz-highlight);
-          transform: scale(1.2);
-        }
+        width: 1.2rem;
+        height: 1.2rem;
+        display: inline-block;
+        padding-top: 4px;
       }
 
+      > span:first-of-type {
+        background: black;
+        font-family: 'Consolas', 'Menlo', 'Monaco', 'DejaVu Sans Mono', 'Ubuntu Mono', 'Courier New', monospace;
+        display: inline-block;
+        border: 1px solid #484a4c;
+        width: 1.2rem;
+        height: 1.2rem;
+        line-height: 1.2rem;
+        font-size: 0.8rem;
+        text-align: center;
+        border-radius: 4px;
+        transition: 0.3s;
+      }
+    }
+
+    @media screen and (max-width: 600px) {
       > div:first-of-type {
-        flex-grow: 2;
-        padding: 0.5rem 0;
+        padding-left: 0;
+      }
+      border-bottom: 1px solid #ffffff3d;
+    }
+  }
 
-        padding-left: 0.5rem;
-        > i:first-of-type {
-          width: 1.2rem;
-          height: 1.2rem;
-          display: inline-block;
-          padding-top: 4px;
-        }
+  > :not(li:first-of-type):not(.empty-moon):hover,
+  > :not(li:first-of-type):not(.empty-moon):active {
+    background: rgba(255, 255, 255, 0.15);
+    > div:first-of-type > span:first-of-type {
+      color: black;
+      background-color: white;
+    }
+    &.is-favorite {
+      background: color-mix(in srgb, var(--oz-highlight) 30%, transparent 70%);
+    }
+  }
 
-        > span:first-of-type {
-          background: black;
-          font-family: 'Consolas', 'Menlo', 'Monaco', 'DejaVu Sans Mono', 'Ubuntu Mono', 'Courier New', monospace;
-          display: inline-block;
-          border: 1px solid #484a4c;
-          width: 1.2rem;
-          height: 1.2rem;
-          line-height: 1.2rem;
-          font-size: 0.8rem;
-          text-align: center;
-          border-radius: 4px;
-          transition: 0.3s;
-        }
-      }
+  @media screen and (min-width: 600px) {
+    > :nth-child(odd) {
+      background: rgba(255, 255, 255, 0.05);
+    }
+  }
 
-      @media screen and (max-width: 600px) {
-        > div:first-of-type {
-          padding-left: 0;
-        }
-        border-bottom: 1px solid #ffffff3d;
-      }
-      // .favorite {
-      //   float: right;
-      // }
-    }
-    > :not(li:first-of-type):not(.empty-moon):hover,
-    > :not(li:first-of-type):not(.empty-moon):active {
-      //color: mediumpurple;
-      background: rgba(255, 255, 255, 0.15);
-      > div:first-of-type > span:first-of-type {
-        color: black;
-        background-color: white;
-      }
-      &.is-favorite {
-        background: color-mix(in srgb, var(--oz-highlight) 30%, transparent 70%);
-      }
-    }
-    @media screen and (min-width: 600px) {
-      > :nth-child(odd) {
-        background: rgba(255, 255, 255, 0.05);
-      }
-    }
-    > li:first-of-type {
-      cursor: not-allowed;
-    }
+  > li:first-of-type {
+    cursor: not-allowed;
   }
 }
 </style>

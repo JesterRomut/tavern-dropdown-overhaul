@@ -5,12 +5,12 @@
 @.cursor/rules/酒馆助手接口.mdc
 @.cursor/rules/脚本.mdc
 
-以上写代码必看，不看找人弄你
+以上酒馆相关必看，不看找人弄你
 然后zod用v4规范，deprecated的东西不要用
 
 @.cursor/rules/前端界面.mdc
 
-写前端界面（如果有index.html就是前端界面，没有就不是）必看
+写前端界面（如果有index.html就是前端界面，没有就不是）必看，不看找人弄你
 注意.vue文件不一定是前端界面，也可能是内嵌在脚本中用的
 
 @.cursor/rules/mcp.mdc

@@ -323,9 +323,6 @@ export default {
   </section>
 </template>
 <style scoped lang="scss">
-@use 'section.scss';
-@use 'transition.scss';
-
 .disabled {
   color: #888;
   h3 {
@@ -448,46 +445,47 @@ export default {
   align-items: center;
   z-index: 10;
   gap: 8px;
-  .popconfirm-title {
-    font-size: 0.8rem;
-    text-align: center;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    color: var(#fff);
-    i {
-      color: var(--oz-highlight);
-    }
+}
+
+.popconfirm-title {
+  font-size: 0.8rem;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(#fff);
+  i {
+    color: var(--oz-highlight);
   }
-  .popconfirm-actions {
-    display: flex;
-    gap: 6px;
-    width: 100%;
-    justify-content: center;
-    .btn {
-      padding: 3px 8px;
-      font-size: 0.75rem;
-      border-radius: 4px;
-      border: none;
-      cursor: pointer;
-      transition: opacity 0.2s;
-      &:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
+}
+.popconfirm-actions {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+  justify-content: center;
+  .btn {
+    padding: 3px 8px;
+    font-size: 0.75rem;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    &.btn-cancel {
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff;
+      &:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.3);
       }
-      &.btn-cancel {
-        background: rgba(255, 255, 255, 0.2);
-        color: #fff;
-        &:hover:not(:disabled) {
-          background: rgba(255, 255, 255, 0.3);
-        }
-      }
-      &.btn-confirm {
-        background: var(--oz-highlight);
-        color: #fff;
-        &:hover:not(:disabled) {
-          filter: brightness(1.1);
-        }
+    }
+    &.btn-confirm {
+      background: var(--oz-highlight);
+      color: #fff;
+      &:hover:not(:disabled) {
+        filter: brightness(1.1);
       }
     }
   }

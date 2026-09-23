@@ -98,6 +98,10 @@ function resolveCssUrls(cssText: string, baseUrl: string): string {
  */
 function isFontResourceUrl(url: string): boolean {
   if (!url) return false;
+  // 排除图标库及宿主框架样式（图标库与框架应由各环境自洽提供，避免宿主残缺图标或全量 CSS 规则污染）
+  if (/(?:fontawesome|font-awesome|icon|tailwind)/i.test(url)) {
+    return false;
+  }
   // 1. 常见字体 CDN 或托管平台
   if (/fonts\.(googleapis|gstatic|bunny)\.com|fontsapi|zeoseven|typekit/i.test(url)) {
     return true;
@@ -162,6 +166,9 @@ function extractFontRulesFromCssRules(
 
     // 1. @font-face 规则
     if (isFontFace) {
+      if (/font\s*awesome|fontawesome/i.test(rule.cssText)) {
+        continue;
+      }
       fontFaces.add(resolveCssUrls(rule.cssText, baseUrl));
       continue;
     }
@@ -304,6 +311,7 @@ export function syncParentFontStyles(targetWindow?: Window | null): void {
           const matches = text.match(/@font-face\s*\{[\s\S]*?\}/gi);
           if (matches) {
             for (const block of matches) {
+              if (/font\s*awesome|fontawesome/i.test(block)) continue;
               fontFaces.add(resolveCssUrls(block, baseUrl));
             }
           }
@@ -315,6 +323,7 @@ export function syncParentFontStyles(targetWindow?: Window | null): void {
 
     if (pw.document.fonts && document.fonts) {
       pw.document.fonts.forEach(font => {
+        if (/font\s*awesome|fontawesome/i.test(font.family)) return;
         try {
           if (!document.fonts.has(font)) {
             document.fonts.add(font);
