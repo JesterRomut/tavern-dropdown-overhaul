@@ -401,7 +401,7 @@ export default {
 .image-wrapper,
 .image-placeholder {
   width: 100%;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 512 / 768;
   border-radius: 6px;
   overflow: hidden;
   display: flex;
