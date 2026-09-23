@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { createCDNContext } from '@util/cdn';
 import AvatarSwitcher from '../shared/AvatarSwitcher.vue';
-import { starts } from '../shared/starts';
 import StartsBrowser from '../shared/StartsBrowser.vue';
 import { vTooltip } from '../shared/tooltip';
+import InfoSwipe from './InfoSwipe.vue';
 
 const cdn = createCDNContext();
 // const blobUrl: Ref<string | null> = ref(null)
@@ -39,19 +39,19 @@ const cdn = createCDNContext();
       :cdn="cdn"
       :manifest="{ repo: 'JesterRomut/tavern-resources', path: 'character/OZ/avatar/index.json' }"
     ></AvatarSwitcher>
-    <p>
+    <!-- <p>
       除单击跳转外，新版酒馆点击右下角箭头下的<code>1/{{ starts.length + 1 }}</code
       >，也可快速跳转开场。
     </p>
     <p>
-      <!-- 希尔伯特、拉格朗日、斐波那契）费迪南德 -->
       游玩出身同一实验室的开局时，给予user任意四字数学家名作为代号（如拉格朗日、克罗内克、勒文海姆）以达到最佳游玩效果。
     </p>
     <p>
       非自用的二改（任何修改）都需授权。二传需标明作者及原帖
       <br />
       商业化禁止
-    </p>
+    </p> -->
+    <InfoSwipe></InfoSwipe>
     <footer>
       <h1>OZ</h1>
       <h2>- In my dreams I'm beautiful... and bad. -</h2>
