@@ -30,12 +30,25 @@ export function createCDNContext(options?: Partial<CDNContext>): CDNContext {
   };
 }
 
-let sharedDefaultContext: CDNContext | null = null;
-function getDefaultContext(): CDNContext {
-  if (!sharedDefaultContext) {
-    sharedDefaultContext = createCDNContext();
+export type BoundMethod<T> = T extends (ctx: CDNContext, ...args: infer P) => infer R ? (...args: P) => R : T;
+
+export type CDNClient<T extends Record<string, any>> = {
+  [K in keyof T]: BoundMethod<T[K]>;
+} & { readonly _ctx: CDNContext };
+
+/**
+ * 工厂函数：按需组合 CDN 方法并返回绑定私有 context 的客户端对象
+ */
+export function createCDN<T extends Record<string, any>>(
+  methods: T,
+  options?: Partial<CDNContext> | CDNContext,
+): CDNClient<T> {
+  const ctx = options && 'hosts' in options ? options : createCDNContext(options);
+  const client: any = { _ctx: ctx };
+  for (const key in methods) {
+    client[key] = methods[key].bind(null, ctx);
   }
-  return sharedDefaultContext;
+  return client;
 }
 
 /**
@@ -64,7 +77,7 @@ export async function pingHost(host: string, timeout: number = 3000): Promise<st
 /**
  * 获取当前最快的 CDN 镜像节点
  */
-export async function getFastestHost(ctx: CDNContext = getDefaultContext()): Promise<string | null> {
+export async function getFastestHost(ctx: CDNContext): Promise<string | null> {
   if (ctx.currentHost) return ctx.currentHost;
   if (ctx.isInitializing) return ctx.isInitializing;
 
@@ -87,7 +100,7 @@ export async function getFastestHost(ctx: CDNContext = getDefaultContext()): Pro
 /**
  * 故障时切换节点
  */
-export async function switchHost(failedHost?: string, ctx: CDNContext = getDefaultContext()): Promise<string | null> {
+export async function switchHost(ctx: CDNContext, failedHost?: string): Promise<string | null> {
   if (failedHost && ctx.currentHost === failedHost) {
     ctx.currentHost = null;
   }
@@ -128,9 +141,9 @@ export async function fetchWithTimeout(url: string, options: RequestInit, timeou
  * 独立请求：从 CDN 镜像拉取资源并自动在失败时故障转移
  */
 export async function fetchFromCdn(
+  ctx: CDNContext,
   pathAndRepo: string,
   options: RequestOptions = {},
-  ctx: CDNContext = getDefaultContext(),
 ): Promise<Response> {
   const { timeout = 5000, ...fetchOptions } = options;
   const normalizedPath = pathAndRepo.startsWith('/') ? pathAndRepo : `/${pathAndRepo}`;
@@ -145,7 +158,7 @@ export async function fetchFromCdn(
   } catch (err) {
     console.warn(`[OZ-CDNManager] 节点 ${host} 不可用，正在启动后备隐藏节点`);
 
-    host = await switchHost(host, ctx);
+    host = await switchHost(ctx, host);
     if (!host) {
       throw new Error('[OZ-CDNManager] 所有后备隐藏节点不可用', { cause: err });
     }
@@ -154,21 +167,17 @@ export async function fetchFromCdn(
   }
 }
 
-// 用于 fetchLatestRepoTag 独立无 context 调用时的模块级缓存与并发控制
-const standaloneVersionCache = new Map<string, string>();
-const standaloneVersionPromises = new Map<string, Promise<string | null>>();
-
 /**
  * 获取远程仓库最新版本/Tag（兼具实时探测、多源回退、防抖缓存及并发去重）
  * 优先探测 GitHub 实时接口（API 与 Atom 订阅流）穿透缓存，最后降级由 jsDelivr 保底
  */
 export async function fetchLatestRepoTag(
+  ctx: CDNContext,
   repo: string,
   options: RequestOptions | number = {},
-  ctx?: CDNContext,
 ): Promise<string | null> {
-  const cache = ctx ? ctx.versionCache : standaloneVersionCache;
-  const promises = ctx ? ctx.versionPromises : standaloneVersionPromises;
+  const cache = ctx.versionCache;
+  const promises = ctx.versionPromises;
 
   if (cache.has(repo)) {
     return cache.get(repo)!;
@@ -281,20 +290,20 @@ export function getGitHubCdnUrl(
  * 快捷拉取 GitHub 资源
  */
 export async function fetchGitHub(
+  ctx: CDNContext,
   repo: string,
   path: string,
   options: RequestOptions = {},
-  ctx?: CDNContext,
 ): Promise<Response> {
-  const version = await fetchLatestRepoTag(repo, options, ctx);
+  const version = await fetchLatestRepoTag(ctx, repo, options);
   const cleanPath = path.replace(/^\/+/, '');
-  return await fetchFromCdn(`gh/${repo}@${version}/${cleanPath}`, options, ctx);
+  return await fetchFromCdn(ctx, `gh/${repo}@${version}/${cleanPath}`, options);
 }
 
 /**
  * 重置 CDN 状态
  */
-export function resetCDNContext(ctx: CDNContext = getDefaultContext()): void {
+export function resetCDNContext(ctx: CDNContext): void {
   ctx.currentHost = null;
   ctx.isInitializing = null;
   ctx.versionCache.clear();

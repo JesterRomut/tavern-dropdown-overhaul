@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { createCDNContext } from '@util/cdn';
+import { createCDN, fetchGitHub, getFastestHost, resetCDNContext } from '@util/cdn';
 import AvatarSwitcher from '../shared/AvatarSwitcher.vue';
 import { starts } from '../shared/starts';
 import StartsBrowser from '../shared/StartsBrowser.vue';
 import { useParentTheme, withCodeFont, withTypography } from '../shared/theme';
 
-const cdn = createCDNContext();
+const cdn = createCDN({ fetchGitHub, getFastestHost, resetCDNContext });
 useParentTheme([withTypography(), withCodeFont()]);
 </script>
 

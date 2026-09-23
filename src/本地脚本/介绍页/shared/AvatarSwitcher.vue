@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { fetchGitHub, getFastestHost, resetCDNContext, type CDNContext } from '@util/cdn';
+import type { CDNClient, fetchGitHub, getFastestHost, resetCDNContext } from '@util/cdn';
 import _, { debounce } from 'lodash';
 import { vTooltip } from './tooltip';
 
 const { path, cdn, manifest } = defineProps<{
   path: string;
-  cdn: CDNContext;
+  cdn: CDNClient<{
+    fetchGitHub: typeof fetchGitHub;
+    getFastestHost: typeof getFastestHost;
+    resetCDNContext: typeof resetCDNContext;
+  }>;
   manifest: { repo: string; path: string };
 }>();
 
@@ -71,7 +75,7 @@ let isUnmounted = false;
 async function resolveFromRepo(repo: string, path: string): Promise<Blob | null> {
   try {
     // const resp = await cdn.fetch(`gh/${repo}@latest/${path}`);
-    const resp = await fetchGitHub(repo, path, {}, cdn);
+    const resp = await cdn.fetchGitHub(repo, path);
     if (!resp.ok) throw new Error(`加载失败:${resp.status}；${resp.statusText}`);
     return await resp.blob();
   } catch (e) {
@@ -116,7 +120,7 @@ async function initGallery() {
   manifestError.value = null;
 
   // const resp = await cdn.fetch('gh/JesterRomut/tavern-resources@main/character/OZ/avatar/index.json');
-  const resp = await fetchGitHub(manifest.repo, manifest.path, {}, cdn);
+  const resp = await cdn.fetchGitHub(manifest.repo, manifest.path);
   if (!resp.ok) {
     manifestError.value = `加载失败：${resp.status}${resp.statusText ? ' - ' + resp.statusText : ''}`;
     return;
@@ -161,12 +165,12 @@ async function confirmApplyAvatar(index: number) {
 }
 
 async function updateCharacterAvatar(blob: Blob) {
-  const chrName = getCurrentCharacterName();
-  if (!chrName) {
-    console.error('角色卡名称为null！');
+  const charId = typeof getCurrentCharacterId === 'function' ? getCurrentCharacterId() : getCurrentCharacterName();
+  if (!charId) {
+    console.error('角色卡标识为null！');
     return;
   }
-  await updateCharacterWith(chrName, async character => {
+  await updateCharacterWith(charId, async character => {
     character.avatar = blob;
     return character;
   });
@@ -179,7 +183,7 @@ async function checkConnectivity() {
     online.value = false;
     return;
   }
-  resetCDNContext(cdn);
+  cdn.resetCDNContext();
   try {
     // const ver = await cdn.fetchLatestVersion(manifest.repo);
     // // const host = await cdn.getFastestHost();
@@ -187,7 +191,7 @@ async function checkConnectivity() {
 
     // console.log(ver);
     // if (!ver) {
-    const host = await getFastestHost(cdn);
+    const host = await cdn.getFastestHost();
     online.value = host !== null;
   } catch {
     online.value = false;
@@ -204,7 +208,7 @@ const handleOnline = () => {
 
 const handleOffline = () => {
   online.value = false;
-  resetCDNContext(cdn);
+  cdn.resetCDNContext();
 };
 
 onMounted(async () => {

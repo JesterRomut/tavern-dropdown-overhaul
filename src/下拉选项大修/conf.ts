@@ -15,9 +15,9 @@ export const DEFAULT_STYLE = `#${DROPDOWN_ID} {
     max-height: 400px;
     display: flex;
     flex-direction: column;
-    background: var(--SmartThemeBlurTintColor, #1a1a1a);
-    color: var(--SmartThemeBodyColor, #eee);
-    border: 1px solid var(--SmartThemeBorderColor, #444);
+    background: var(--SmartThemeBlurTintColor);
+    color: var(--SmartThemeBodyColor);
+    border: 1px solid var(--SmartThemeBorderColor);
     border-radius: 4px;
 
     overflow: hidden;
@@ -27,7 +27,6 @@ export const DEFAULT_STYLE = `#${DROPDOWN_ID} {
 
 #${DROPDOWN_ID} .search-wrapper {
     padding: 8px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     flex-shrink: 0;
 }
 
@@ -35,14 +34,11 @@ export const DEFAULT_STYLE = `#${DROPDOWN_ID} {
     width: 100%;
     padding: 6px 8px;
     border-radius: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid var(--SmartThemeQuoteColor);
     background: var(--SmartThemeBlurTintColor);
     color: inherit;
     outline: none;
     font-size: 0.9em;
-}
-#${DROPDOWN_ID} .search-input:focus {
-    border-color: var(--SmartThemeQuoteColor, #888);
 }
 
 #${DROPDOWN_ID} .options-list {
@@ -55,7 +51,7 @@ export const DEFAULT_STYLE = `#${DROPDOWN_ID} {
     width: 6px;
 }
 #${DROPDOWN_ID} .options-list::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
+    background: color-mix(contrast-color(var(--SmartThemeBlurTintColor)) 20%,transparent);
     border-radius: 3px;
 }
 
@@ -70,12 +66,12 @@ export const DEFAULT_STYLE = `#${DROPDOWN_ID} {
     box-sizing: border-box;
 }
 #${DROPDOWN_ID} .option-item:hover {
-    background: rgba(128,128,128,0.1);
+    background: color-mix(contrast-color(var(--SmartThemeBodyColor)) 30%,transparent);
 }
 #${DROPDOWN_ID} .option-item.selected {
-    background: rgba(128,128,128,0.2);
+    background: color-mix(contrast-color(var(--SmartThemeBodyColor)) 20%,transparent);
     font-weight: bold;
-    border-left: 3px solid var(--SmartThemeQuoteColor, #888);
+    border-left: 3px solid var(--SmartThemeQuoteColor);
 }
 #${DROPDOWN_ID} .option-item.disabled {
     opacity: 0.5;
@@ -88,7 +84,7 @@ export const DEFAULT_STYLE = `#${DROPDOWN_ID} {
     height: 14px;
     flex-shrink: 0;
     margin-left: 8px;
-    border: 1.5px solid rgba(255, 255, 255, 0.3);
+    border: 1.5px solid var(--SmartThemeBodyColor);
     border-radius: 3px;
     display: flex;
     align-items: center;
@@ -105,21 +101,21 @@ export const DEFAULT_STYLE = `#${DROPDOWN_ID} {
     transform-origin: bottom left;
     clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
     color: #fff;
-    background: var(--SmartThemeQuoteColor, #888);
+    background: var(--SmartThemeQuoteColor);
     position: absolute;
     right: calc(12px + 0.65em / 4);
 }
 #${DROPDOWN_ID} .no-results {
     padding: 12px;
     text-align: center;
-    color: var(--SmartThemeBodyColor, #eee);
+    color: var(--SmartThemeBodyColor);
     font-style: italic;
     display: none;
 }
 #${DROPDOWN_ID} .optgroup-header {
     padding: 3px 12px;
     font-size: 0.8em;
-    color: var(--SmartThemeQuoteColor, #888);
+    color: var(--SmartThemeQuoteColor);
     pointer-events: none;
     background: rgba(128, 128, 128, 0.2);
 }

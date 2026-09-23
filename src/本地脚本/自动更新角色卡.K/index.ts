@@ -1,4 +1,4 @@
-import { createCDNContext, fetchFromCdn, fetchLatestRepoTag } from '@util/cdn';
+import { createCDN, fetchFromCdn, fetchLatestRepoTag } from '@util/cdn';
 import { teleportStyle } from '@util/script';
 import { compare, validate } from 'compare-versions';
 import toastr from 'toastr';
@@ -23,12 +23,12 @@ function isValidConfig(conf: Config): conf is ValidConfig {
   return Boolean(conf.repo && conf.pathChr && conf.pathChangelog);
 }
 
-const cdn = createCDNContext();
+const cdn = createCDN({ fetchFromCdn, fetchLatestRepoTag });
 const UPDATE_BUTTON_NAME = (remoteVersion?: string) => (remoteVersion ? `更新角色卡：${remoteVersion}` : '更新角色卡');
 
 let updateContext: {
   conf: ValidConfig;
-  charName: string;
+  charId: string;
   localVersion: string;
   remoteVersion: string;
   repoTag: string;
@@ -84,64 +84,6 @@ function extractLatestVersion(markdown: string): string | null {
 }
 
 /**
- * 实时探测远端 GitHub 仓库最新 Tag（快照版本）
- * 优先采用 GitHub 官方实时接口（API 与 Atom 订阅流），彻底穿透浏览器与中间代理缓存，最后降级以 jsDelivr 保底
- */
-// async function fetchRemoteLatestRepoTag(repo: string, timeout = 4000): Promise<string | null> {
-//   const apis: {
-//     url: string;
-//     isXml?: boolean;
-//     parser: (data: any) => string | null | undefined;
-//   }[] = [
-//     {
-//       url: `https://api.github.com/repos/${repo}/tags?per_page=1`,
-//       parser: (json: any) => json[0]?.name,
-//     },
-//     {
-//       url: `https://github.com/${repo}/tags.atom`,
-//       isXml: true,
-//       parser: (text: string) => {
-//         const match = text.match(/<entry>[\s\S]*?<title>\s*([^<\s]+)\s*<\/title>/i);
-//         return match?.[1]?.trim() ?? null;
-//       },
-//     },
-//     {
-//       url: `https://data.jsdelivr.com/v1/packages/gh/${repo}`,
-//       parser: (json: any) => json.tags?.latest || json.versions?.[0]?.version,
-//     },
-//   ];
-
-//   for (const { url, isXml, parser } of apis) {
-//     try {
-//       const controller = new AbortController();
-//       const timer = setTimeout(() => controller.abort(), timeout);
-//       const bustUrl = `${url}${url.includes('?') ? '&' : '?'}_t=${Date.now()}`;
-//       const res = await fetch(bustUrl, {
-//         signal: controller.signal,
-//         cache: 'no-store',
-//         headers: isXml
-//           ? { Accept: 'application/atom+xml, application/xml, text/xml, */*' }
-//           : { Accept: 'application/vnd.github+json, application/json, */*' },
-//       });
-//       clearTimeout(timer);
-
-//       if (res.ok) {
-//         const data = isXml ? await res.text() : await res.json();
-//         const tag = parser(data);
-//         if (tag) {
-//           console.info(`[自动更新] 成功从 ${url} 探测到最新 Tag: ${tag}`);
-//           return tag.trim();
-//         }
-//       }
-//     } catch (e) {
-//       console.warn(`[自动更新] 从 ${url} 探测最新版本失败:`, e);
-//       continue;
-//     }
-//   }
-//   return null;
-// }
-
-/**
  * 生成用于备份文件的时间戳后缀（格式：YYYYMMDD_HHmmss）
  */
 function formatTimestamp(): string {
@@ -153,10 +95,10 @@ function formatTimestamp(): string {
 /**
  * 获取当前角色绑定的主世界书名称（不包含附加世界书）
  */
-async function getCharacterWorldbookName(charName: string): Promise<string | null> {
+async function getCharacterWorldbookName(charId: string): Promise<string | null> {
   // 1. 尝试从 getCharWorldbookNames 获取 primary（主世界书）
   try {
-    const charWb = getCharWorldbookNames(charName);
+    const charWb = getCharWorldbookNames(charId);
     if (charWb?.primary) {
       return charWb.primary;
     }
@@ -164,26 +106,26 @@ async function getCharacterWorldbookName(charName: string): Promise<string | nul
     console.warn('[自动更新] getCharWorldbookNames 获取角色主世界书失败:', e);
   }
 
-  // 2. 尝试从角色卡元数据获取 worldbook
-  try {
-    const char = await getCharacter(charName);
-    if (char?.worldbook) {
-      return char.worldbook;
-    }
-  } catch (e) {
-    console.warn('[自动更新] getCharacter 获取角色主世界书失败:', e);
-  }
+  // // 2. 尝试从角色卡元数据获取 worldbook
+  // try {
+  //   const char = await getCharacter(charName);
+  //   if (char?.worldbook) {
+  //     return char.worldbook;
+  //   }
+  // } catch (e) {
+  //   console.warn('[自动更新] getCharacter 获取角色主世界书失败:', e);
+  // }
 
-  // 3. 尝试从 RawCharacter 获取 embedded character_book 名称
-  try {
-    const rawChar = RawCharacter.find({ name: charName });
-    const bookName = rawChar?.data.character_book.name;
-    if (bookName) {
-      return bookName;
-    }
-  } catch (e) {
-    console.warn('[自动更新] RawCharacter 获取角色书失败:', e);
-  }
+  // // 3. 尝试从 RawCharacter 获取 embedded character_book 名称
+  // try {
+  //   const rawChar = RawCharacter.find({ name: charName });
+  //   const bookName = rawChar?.data.character_book.name;
+  //   if (bookName) {
+  //     return bookName;
+  //   }
+  // } catch (e) {
+  //   console.warn('[自动更新] RawCharacter 获取角色书失败:', e);
+  // }
   return null;
 }
 
@@ -225,7 +167,7 @@ async function backupWorldbook(wbName: string): Promise<string | null> {
 /**
  * 执行角色卡更新下载与替换
  */
-async function performUpdate(conf: ValidConfig, charName: string, remoteVersion: string, repoTag?: string) {
+async function performUpdate(conf: ValidConfig, charId: string, remoteVersion: string, repoTag?: string) {
   if (isUpdating) {
     toastr.warning('角色卡更新正在进行中！');
     return;
@@ -237,7 +179,7 @@ async function performUpdate(conf: ValidConfig, charName: string, remoteVersion:
   try {
     const targetTag = repoTag || 'latest';
     const cleanPath = conf.pathChr.replace(/^\/+/, '');
-    const res = await fetchFromCdn(`gh/${conf.repo}@${targetTag}/${cleanPath}`, {}, cdn);
+    const res = await cdn.fetchFromCdn(`gh/${conf.repo}@${targetTag}/${cleanPath}`);
     if (!res.ok) {
       toastr.error(`下载角色卡文件失败 (HTTP ${res.status})`, '更新失败');
       return;
@@ -245,12 +187,12 @@ async function performUpdate(conf: ValidConfig, charName: string, remoteVersion:
 
     const blob = await res.blob();
 
-    const importRes = await importRawCharacter(charName, blob);
+    const importRes = await importRawCharacter(charId, blob);
     if (importRes && !importRes.ok) {
       throw new Error(`角色卡导入失败 (HTTP ${importRes.status})`);
     }
 
-    await replaceCharacter(charName, { version: remoteVersion });
+    await replaceCharacter(charId, { version: remoteVersion });
 
     toastr.success(`角色卡已成功更新至 ${remoteVersion}！`, '更新成功');
     clearUpdateButton();
@@ -267,7 +209,7 @@ async function performUpdate(conf: ValidConfig, charName: string, remoteVersion:
  */
 async function showUpdateModal(
   conf: ValidConfig,
-  charName: string,
+  charId: string,
   localVersion: string,
   remoteVersion: string,
   changelogText: string,
@@ -294,9 +236,9 @@ async function showUpdateModal(
   });
 
   if (result === SillyTavern.POPUP_RESULT.AFFIRMATIVE || result === 1 || result === true) {
-    const wbName = await getCharacterWorldbookName(charName);
+    const wbName = await getCharacterWorldbookName(charId);
     if (!wbName) {
-      await performUpdate(conf, charName, remoteVersion, repoTag);
+      await performUpdate(conf, charId, remoteVersion, repoTag);
       return;
     }
     const confirmResult = await SillyTavern.callGenericPopup(
@@ -329,9 +271,9 @@ async function showUpdateModal(
       }
       toastr.success(`世界书已备份为：${backupName}`, '备份成功');
 
-      await performUpdate(conf, charName, remoteVersion, repoTag);
+      await performUpdate(conf, charId, remoteVersion, repoTag);
     } else if (isDirectUpdate) {
-      await performUpdate(conf, charName, remoteVersion, repoTag);
+      await performUpdate(conf, charId, remoteVersion, repoTag);
     }
   }
 }
@@ -341,19 +283,19 @@ async function showUpdateModal(
  */
 async function checkUpdate(conf: ValidConfig) {
   try {
-    const charName = getCurrentCharacterName();
-    if (!charName) {
+    const charId = typeof getCurrentCharacterId === 'function' ? getCurrentCharacterId() : getCurrentCharacterName();
+    if (!charId) {
       console.warn('[自动更新] 当前未选择角色卡，跳过更新检查');
       clearUpdateButton();
       return;
     }
 
     // 1. 探测远程仓库最新的 Tag（如 v0.0.44），用于精准定位 CDN 快照并彻底绕过 jsDelivr 对 @latest 的长缓存
-    const repoTag = (await fetchLatestRepoTag(conf.repo, {}, cdn)) || 'latest';
+    const repoTag = (await cdn.fetchLatestRepoTag(conf.repo)) || 'latest';
 
     // 2. 从指定仓库快照中拉取该角色卡的更新日志文件（如 UPDATE.md）
     const cleanChangelogPath = conf.pathChangelog.replace(/^\/+/, '');
-    const changelogRes = await fetchFromCdn(`gh/${conf.repo}@${repoTag}/${cleanChangelogPath}`, {}, cdn);
+    const changelogRes = await cdn.fetchFromCdn(`gh/${conf.repo}@${repoTag}/${cleanChangelogPath}`);
     if (!changelogRes.ok) {
       console.warn(`[自动更新] 获取更新日志失败: HTTP ${changelogRes.status}`);
       return;
@@ -369,7 +311,7 @@ async function checkUpdate(conf: ValidConfig) {
     }
 
     const remoteVersion = cleanVersion(rawRemoteVersion);
-    const character = await getCharacter(charName);
+    const character = await getCharacter(charId);
     const localVersion = character.version || (character as any).character_version || '0.0.0';
 
     // 4. 对比角色卡自身版本（如 0.0.1 < 0.0.2）
@@ -377,7 +319,7 @@ async function checkUpdate(conf: ValidConfig) {
       console.info(`[自动更新] 发现角色卡新版本: v${remoteVersion} (当前: v${localVersion}, 仓库Tag: ${repoTag})`);
       updateContext = {
         conf,
-        charName,
+        charId,
         localVersion,
         remoteVersion,
         repoTag,
@@ -395,7 +337,7 @@ async function checkUpdate(conf: ValidConfig) {
           if (updateContext) {
             await showUpdateModal(
               updateContext.conf,
-              updateContext.charName,
+              updateContext.charId,
               updateContext.localVersion,
               updateContext.remoteVersion,
               updateContext.changelogText,

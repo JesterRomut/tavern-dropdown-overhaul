@@ -291,7 +291,7 @@ onBeforeUnmount(destroySelect2);
         <div class="inline-drawer-content">
           <div class="flex-container">
             <div class="flex-container">
-              <h3>示例选项</h3>
+              <h3>示例</h3>
             </div>
             <select
               v-if="toggleExampleSelect2"
@@ -310,15 +310,15 @@ onBeforeUnmount(destroySelect2);
               </option>
             </select>
             <div class="flex-container">
-              <label class="checkbox_label" type="checkbox" title="开启后将接管所有 Select2 下拉框">
+              <label class="checkbox_label" type="checkbox" :title="`全量选项（${SEARCH_THRESHOLD}+）`">
                 <input v-model="toggleExampleSearch" type="checkbox" />
                 <span>显示搜索框</span>
               </label>
             </div>
             <div class="flex-container">
-              <label class="checkbox_label" type="checkbox" title="开启后将接管所有 Select2 下拉框">
+              <label class="checkbox_label" type="checkbox" title="Select2">
                 <input v-model="toggleExampleSelect2" type="checkbox" />
-                <span>切换为Select2</span>
+                <span>多选</span>
               </label>
             </div>
           </div>
@@ -331,7 +331,7 @@ onBeforeUnmount(destroySelect2);
           <!-- 主题预设工具栏 -->
           <div class="flex-container k3rn-theme-toolbar">
             <select v-model="settings.theme.current" class="k3rn-theme-select" title="切换主题预设">
-              <option :value="DEFAULT_THEME_NAME">{{ `默认 (内置)` }}</option>
+              <option :value="DEFAULT_THEME_NAME">默认 (内置)</option>
               <option v-for="t in settings.theme.customThemes" :key="t.name" :value="t.name">
                 {{ t.name }}
               </option>

@@ -1,10 +1,10 @@
-import { createCDNContext, fetchGitHub, fetchLatestRepoTag, getFastestHost, getGitHubCdnUrl } from '@util/cdn';
+import { createCDN, fetchGitHub, fetchLatestRepoTag, getFastestHost, getGitHubCdnUrl } from '@util/cdn';
 
-const ctx = createCDNContext();
+const cdn = createCDN({ fetchGitHub, fetchLatestRepoTag, getFastestHost });
 
 export async function loadScript(repo: string, path: string, pathReadme: string, name = '脚本加载器') {
   try {
-    const [tagRes, hostRes] = await Promise.all([fetchLatestRepoTag(repo, undefined, ctx), getFastestHost(ctx)]);
+    const [tagRes, hostRes] = await Promise.all([cdn.fetchLatestRepoTag(repo), cdn.getFastestHost()]);
     const tag = tagRes || 'latest';
     const host = hostRes || undefined;
     const scriptUrl = getGitHubCdnUrl(repo, path, tag, host);
@@ -16,7 +16,7 @@ export async function loadScript(repo: string, path: string, pathReadme: string,
     return;
   }
 
-  const readme = await fetchGitHub(repo, pathReadme, undefined, ctx);
+  const readme = await cdn.fetchGitHub(repo, pathReadme);
   if (!readme.ok) {
     console.error(`[${name}] README加载失败:`, readme.status);
     return;

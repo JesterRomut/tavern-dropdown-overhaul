@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { createCDNContext } from '@util/cdn';
+import { createCDN, fetchGitHub, getFastestHost, resetCDNContext } from '@util/cdn';
 import AvatarSwitcher from '../shared/AvatarSwitcher.vue';
 import StartsBrowser from '../shared/StartsBrowser.vue';
 import { vTooltip } from '../shared/tooltip';
@@ -10,7 +10,7 @@ import { useParentTheme, withCodeFont, withTypography } from '../shared/theme';
 import { format, splitPages } from '../shared/util';
 import about1 from './about1.md';
 
-const cdn = createCDNContext();
+const cdn = createCDN({ fetchGitHub, getFastestHost, resetCDNContext });
 
 useParentTheme([withTypography(), withCodeFont()]);
 // const blobUrl: Ref<string | null> = ref(null)
