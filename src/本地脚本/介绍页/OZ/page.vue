@@ -5,6 +5,10 @@ import StartsBrowser from '../shared/StartsBrowser.vue';
 import { vTooltip } from '../shared/tooltip';
 import InfoSwipe from './InfoSwipe.vue';
 
+import { starts } from '../shared/starts';
+import { format } from '../shared/util';
+import about1 from './about1.md';
+
 const cdn = createCDNContext();
 // const blobUrl: Ref<string | null> = ref(null)
 
@@ -51,7 +55,7 @@ const cdn = createCDNContext();
       <br />
       商业化禁止
     </p> -->
-    <InfoSwipe></InfoSwipe>
+    <InfoSwipe :pages="[format(about1, { max_swipes: starts.length + 1 }), ]"></InfoSwipe>
     <footer>
       <h1>OZ</h1>
       <h2>- In my dreams I'm beautiful... and bad. -</h2>
