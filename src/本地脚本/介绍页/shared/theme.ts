@@ -27,8 +27,22 @@
  * - `--SmartThemeEmColor`
  * - `--monoFontFamily`
  *
- * 此外，本模块会自动动态扫描并克隆宿主父窗口中的 `@font-face` 与字体 `@import` 规则到本页面 `<head>`，
- * 并将 `document.body.style.fontFamily` 同步设为 `--theme-font-family`。
+ * ### 插件化按需引入 (Tree-shaking Plugins)：
+ * - `withColors()`     : 主题外观色同步（轻量，不引入字体扫描引擎）
+ * - `withTypography()` : 正文排版与正文字体同步（自动联动引入字体扫描引擎）
+ * - `withCodeFont()`   : 代码块字体同步（自动联动引入字体扫描引擎）
+ *
+ * 示例：
+ * ```ts
+ * // 仅使用颜色（零字体扫描开销，体积最小）
+ * useParentTheme([withColors()]);
+ *
+ * // 使用正文与颜色
+ * useParentTheme([withColors(), withTypography()]);
+ *
+ * // 包含代码块
+ * useParentTheme([withColors(), withTypography(), withCodeFont()]);
+ * ```
  *
  * 噢对了，参考了数据库通用美化（这个有不显示高亮颜色的问题）和朋友的卡的正则
  */
@@ -335,63 +349,64 @@ export function syncParentFontStyles(targetWindow?: Window | null): void {
   }
 }
 
+let lastFontSyncTime = 0;
+function syncParentFontStylesOnce(pw: Window): void {
+  const now = Date.now();
+  if (now - lastFontSyncTime < 60) return;
+  lastFontSyncTime = now;
+  syncParentFontStyles(pw);
+}
+
+export interface ThemeSyncContext {
+  pw: Window;
+  pDoc: Document;
+  target: Element | null;
+  pBody: HTMLElement | null;
+  root: HTMLElement;
+  getProp: (name: string) => string;
+}
+
+export type ThemePlugin = (ctx: ThemeSyncContext) => void;
+
 /**
- * 执行一次全量父窗口主题与排版样式同步
+ * 主题外观色插件 (SmartTheme Colors)
+ * 仅提取主题颜色变量，不引入字体扫描引擎
  */
-export function syncParentTheme(): void {
-  try {
-    const pw = getParentWindow();
-    if (!pw) return;
+export function withColors(): ThemePlugin {
+  const colorMappings: Array<{ cssVar: string; themeKey: string }> = [
+    { cssVar: '--SmartThemeBodyColor', themeKey: '--theme-body-color' },
+    { cssVar: '--SmartThemeQuoteColor', themeKey: '--theme-quote-color' },
+    { cssVar: '--SmartThemeBlurTintColor', themeKey: '--theme-blur-tint-color' },
+    { cssVar: '--SmartThemeEmColor', themeKey: '--theme-em-color' },
+    { cssVar: '--SmartThemeChatTintColor', themeKey: '--theme-chat-tint-color' },
+  ];
 
-    const pDoc = pw.document;
-    const pRoot = pDoc.documentElement;
-    const pBody = pDoc.body;
-    // 优先取消息气泡元素作为基准，回退到 #chat 或 body
-    const target = pDoc.querySelector('.mes_text') || pDoc.querySelector('#chat') || pBody;
-
-    let rootStyle: CSSStyleDeclaration | null = null;
-    let targetStyle: CSSStyleDeclaration | null = null;
-    let bodyStyle: CSSStyleDeclaration | null = null;
-
-    rootStyle = pw.getComputedStyle(pRoot);
-    targetStyle = target ? pw.getComputedStyle(target) : null;
-    bodyStyle = pBody ? pw.getComputedStyle(pBody) : null;
-
-    const getProp = (name: string): string => {
-      const inline = pRoot.style.getPropertyValue(name);
-      if (inline) return inline.trim();
-      if (rootStyle) {
-        const val = rootStyle.getPropertyValue(name);
-        if (val) return val.trim();
+  return ({ getProp, root }) => {
+    for (const { cssVar, themeKey } of colorMappings) {
+      const val = getProp(cssVar);
+      if (val) {
+        root.style.setProperty(themeKey, val);
+        root.style.setProperty(cssVar, val);
       }
-      return '';
-    };
+    }
+  };
+}
 
-    const root = document.documentElement;
+/**
+ * 正文排版与字体插件 (Typography)
+ * 提取正文字体族、字号、字重、行高与字距，并自动联动克隆宿主字体样式表
+ */
+export function withTypography(): ThemePlugin {
+  return ({ pw, target, pBody, root, getProp }) => {
+    const targetStyle = target ? pw.getComputedStyle(target) : null;
+    const bodyStyle = pBody ? pw.getComputedStyle(pBody) : null;
 
-    // --- 1. 排版与字体属性 ---
     const fontFamily = targetStyle?.fontFamily || bodyStyle?.fontFamily || '';
     if (fontFamily) {
       root.style.setProperty('--theme-font-family', fontFamily);
       if (document.body) {
         document.body.style.fontFamily = fontFamily;
       }
-    }
-
-    const codeTarget = pDoc.querySelector('.mes_text code, .mes_text pre') || pDoc.querySelector('code, pre');
-    let codeFontFamily = codeTarget ? pw.getComputedStyle(codeTarget).fontFamily : '';
-    if (!codeFontFamily && (target || pBody)) {
-      const temp = pDoc.createElement('code');
-      (target || pBody).appendChild(temp);
-      codeFontFamily = pw.getComputedStyle(temp).fontFamily;
-      temp.remove();
-    }
-    if (!codeFontFamily) {
-      codeFontFamily = getProp('--font-mono') || getProp('--monoFontFamily');
-    }
-    if (codeFontFamily) {
-      root.style.setProperty('--theme-code-font-family', codeFontFamily);
-      root.style.setProperty('--monoFontFamily', codeFontFamily);
     }
 
     const fontSize = getProp('--mainFontSize') || targetStyle?.fontSize || bodyStyle?.fontSize || '';
@@ -414,24 +429,72 @@ export function syncParentTheme(): void {
       root.style.setProperty('--theme-letter-spacing', letterSpacing);
     }
 
-    const colorMappings: Array<{ cssVar: string; themeKey: string }> = [
-      { cssVar: '--SmartThemeBodyColor', themeKey: '--theme-body-color' },
-      { cssVar: '--SmartThemeQuoteColor', themeKey: '--theme-quote-color' },
-      { cssVar: '--SmartThemeBlurTintColor', themeKey: '--theme-blur-tint-color' },
-      { cssVar: '--SmartThemeEmColor', themeKey: '--theme-em-color' },
-      { cssVar: '--SmartThemeChatTintColor', themeKey: '--theme-chat-tint-color' },
-    ];
+    syncParentFontStylesOnce(pw);
+  };
+}
 
-    for (const { cssVar, themeKey } of colorMappings) {
-      const val = getProp(cssVar);
-      if (val) {
-        root.style.setProperty(themeKey, val);
-        root.style.setProperty(cssVar, val); // 保持向后兼容
-      }
+/**
+ * 代码块字体插件 (Code Typography)
+ * 提取代码块字体族，并自动联动克隆宿主字体样式表
+ */
+export function withCodeFont(): ThemePlugin {
+  return ({ pw, pDoc, target, pBody, root, getProp }) => {
+    const codeTarget = pDoc.querySelector('.mes_text code, .mes_text pre') || pDoc.querySelector('code, pre');
+    let codeFontFamily = codeTarget ? pw.getComputedStyle(codeTarget).fontFamily : '';
+    if (!codeFontFamily && (target || pBody)) {
+      const temp = pDoc.createElement('code');
+      (target || pBody)?.appendChild(temp);
+      codeFontFamily = pw.getComputedStyle(temp).fontFamily;
+      temp.remove();
+    }
+    if (!codeFontFamily) {
+      codeFontFamily = getProp('--font-mono') || getProp('--monoFontFamily');
+    }
+    if (codeFontFamily) {
+      root.style.setProperty('--theme-code-font-family', codeFontFamily);
+      root.style.setProperty('--monoFontFamily', codeFontFamily);
     }
 
-    // --- 3. 自定义字体样式表同步 ---
-    syncParentFontStyles(pw);
+    syncParentFontStylesOnce(pw);
+  };
+}
+
+/**
+ * 执行一次父窗口主题与排版同步
+ */
+export function syncParentTheme(plugins: ThemePlugin[], targetWindow?: Window | null): void {
+  try {
+    const pw = targetWindow || getParentWindow();
+    if (!pw) return;
+
+    const pDoc = pw.document;
+    const pRoot = pDoc.documentElement;
+    const pBody = pDoc.body;
+    const target = pDoc.querySelector('.mes_text') || pDoc.querySelector('#chat') || pBody;
+    const rootStyle = pw.getComputedStyle(pRoot);
+
+    const getProp = (name: string): string => {
+      const inline = pRoot.style.getPropertyValue(name);
+      if (inline) return inline.trim();
+      if (rootStyle) {
+        const val = rootStyle.getPropertyValue(name);
+        if (val) return val.trim();
+      }
+      return '';
+    };
+
+    const ctx: ThemeSyncContext = {
+      pw,
+      pDoc,
+      target,
+      pBody,
+      root: document.documentElement,
+      getProp,
+    };
+
+    for (const plugin of plugins) {
+      plugin(ctx);
+    }
   } catch (err) {
     console.warn('[theme] 主题注入失败:', err);
   }
@@ -440,10 +503,10 @@ export function syncParentTheme(): void {
 /**
  * 监听父窗口的主题与排版样式变更，返回注销监听的清理函数
  */
-export function watchParentTheme(options?: { debounceMs?: number }): () => void {
+export function watchParentTheme(plugins: ThemePlugin[], options?: { debounceMs?: number }): () => void {
   const pw = getParentWindow();
   if (!pw) {
-    syncParentTheme();
+    syncParentTheme(plugins);
     return () => {};
   }
 
@@ -454,12 +517,12 @@ export function watchParentTheme(options?: { debounceMs?: number }): () => void 
     if (timer) clearTimeout(timer);
     timer = setTimeout(() => {
       timer = null;
-      syncParentTheme();
+      syncParentTheme(plugins, pw);
     }, debounceMs);
   };
 
   // 初始立即同步一次
-  syncParentTheme();
+  syncParentTheme(plugins, pw);
 
   try {
     const observer = new MutationObserver(() => {
@@ -493,19 +556,16 @@ export function watchParentTheme(options?: { debounceMs?: number }): () => void 
 }
 
 /**
- * 注入并同步宿主酒馆主题与排版（向后兼容接口）
+ * 注入并同步宿主酒馆主题与排版（按需插件化）
  *
- * 会在当前文档 `:root` 注入以下 CSS 变量：
- * - 排版：`--theme-font-family`, `--theme-code-font-family`, `--theme-font-size`, `--theme-font-weight`, `--theme-line-height`, `--theme-letter-spacing`
- * - 颜色：`--theme-text-color`, `--theme-text-dim`, `--theme-text-muted`, `--theme-border-color`
- * - 外观：`--theme-body-color`, `--theme-quote-color`, `--theme-blur-tint-color`, `--theme-em-color`, `--theme-chat-tint-color`
- * - 兼容变量：`--SmartThemeBodyColor`, `--SmartThemeQuoteColor`, `--SmartThemeBlurTintColor`, `--SmartThemeEmColor`, `--monoFontFamily`
+ * @param plugins 需要激活的插件列表（如 withColors(), withTypography(), withCodeFont()）
+ * @param options 配置项（如防抖延时）
  */
-export function useParentTheme(options?: { debounceMs?: number }): void {
+export function useParentTheme(plugins: ThemePlugin[] = [], options?: { debounceMs?: number }): void {
   let cleanup: (() => void) | null = null;
 
   onMounted(() => {
-    cleanup = watchParentTheme(options);
+    cleanup = watchParentTheme(plugins, options);
   });
 
   onUnmounted(() => {

@@ -6,13 +6,13 @@ import { vTooltip } from '../shared/tooltip';
 import InfoSwipe from './InfoSwipe.vue';
 
 import { starts } from '../shared/starts';
-import { useParentTheme } from '../shared/theme';
+import { useParentTheme, withCodeFont, withTypography } from '../shared/theme';
 import { format, splitPages } from '../shared/util';
 import about1 from './about1.md';
 
 const cdn = createCDNContext();
 
-useParentTheme();
+useParentTheme([withTypography(), withCodeFont()]);
 // const blobUrl: Ref<string | null> = ref(null)
 
 // async function loadBackground(){

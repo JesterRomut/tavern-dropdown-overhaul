@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { useParentTheme } from '../shared/theme';
+import { useParentTheme, withColors, withTypography } from '../shared/theme';
 import { changeGreeting } from '../shared/util';
 
-useParentTheme();
+useParentTheme([withColors(), withTypography()]);
 </script>
 <template>
   <main>

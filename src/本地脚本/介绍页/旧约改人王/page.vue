@@ -3,10 +3,10 @@ import { createCDNContext } from '@util/cdn';
 import AvatarSwitcher from '../shared/AvatarSwitcher.vue';
 import { starts } from '../shared/starts';
 import StartsBrowser from '../shared/StartsBrowser.vue';
-import { useParentTheme } from '../shared/theme';
+import { useParentTheme, withCodeFont, withTypography } from '../shared/theme';
 
 const cdn = createCDNContext();
-useParentTheme();
+useParentTheme([withTypography(), withCodeFont()]);
 </script>
 
 <template>
