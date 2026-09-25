@@ -4,14 +4,14 @@ import { compare, validate } from 'compare-versions';
 import toastr from 'toastr';
 import UpdateModal from './updateModal.vue';
 
-type Config = z.infer<typeof Config>;
-const Config = z
-  .object({
-    repo: z.optional(z.string()),
-    pathChr: z.optional(z.string()),
-    pathChangelog: z.optional(z.string()),
-  })
-  .prefault({});
+// type Config = z.infer<typeof Config>;
+// const Config = z
+//   .object({
+//     repo: z.optional(z.string()),
+//     pathChr: z.optional(z.string()),
+//     pathChangelog: z.optional(z.string()),
+//   })
+//   .prefault({});
 
 interface ValidConfig {
   repo: string;
@@ -19,9 +19,9 @@ interface ValidConfig {
   pathChangelog: string;
 }
 
-function isValidConfig(conf: Config): conf is ValidConfig {
-  return Boolean(conf.repo && conf.pathChr && conf.pathChangelog);
-}
+// function isValidConfig(conf: Config): conf is ValidConfig {
+//   return Boolean(conf.repo && conf.pathChr && conf.pathChangelog);
+// }
 
 const cdn = createCDN({ fetchFromCdn, fetchLatestRepoTag });
 const UPDATE_BUTTON_NAME = (remoteVersion?: string) => (remoteVersion ? `更新角色卡：${remoteVersion}` : '更新角色卡');
@@ -358,23 +358,23 @@ async function checkUpdate(conf: ValidConfig) {
   }
 }
 
-async function init() {
+export async function init(conf: ValidConfig) {
   clearUpdateButton();
 
-  const { success, data: conf } = Config.safeParse(getVariables({ type: 'script' }));
+  // const { success, data: conf } = Config.safeParse(getVariables({ type: 'script' }));
 
-  if (!success || !isValidConfig(conf)) {
-    toastr.error('无效的更新角色卡源！');
-    return;
-  }
+  // if (!success || !isValidConfig(conf)) {
+  //   toastr.error('无效的更新角色卡源！');
+  //   return;
+  // }
 
   await checkUpdate(conf);
 }
 
-$(async () => {
-  // 角色卡页面重新载入时再次检查
-  eventOn(tavern_events.CHARACTER_PAGE_LOADED, async () => {
-    await init();
-  });
-  await init();
-});
+// $(async () => {
+//   // 角色卡页面重新载入时再次检查
+//   eventOn(tavern_events.CHARACTER_PAGE_LOADED, async () => {
+//     await init();
+//   });
+//   await init();
+// });
