@@ -17,8 +17,10 @@ useParentTheme([withTypography(), withCodeFont()]);
 
 <template>
   <main>
-    <p>作者@Kernschmelze。OZ，只是一个因特异功能实验室倒闭而出来混饭吃的超能力者。</p>
-    <p>“大家早就不需要超能力者了。有了计算机和互联网，谁还需要被折弯的勺子和被撬开的锁呢？”</p>
+    <p>
+      作者@Kernschmelze。飞光兽，是香巴拉风味光明兽性转。名字来自《苦昼短》。以防你不知道光明兽是谁？嗯……是一个人畜无害的小男孩。
+    </p>
+    <p>就像正作中堕天和贝子的关系一样，飞光兽和光明兽的性格不是100%相同的，飞光兽也不认识七大魔王。</p>
 
     <StartsBrowser path="Feiguangmon" />
     <AvatarSwitcher
