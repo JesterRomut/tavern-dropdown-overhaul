@@ -8,31 +8,11 @@ import { vTooltip } from '../tooltip';
 import { starts } from '../starts';
 import { useParentTheme, withCodeFont, withTypography } from '../theme';
 import { format, splitPages } from '../util';
-import about1 from './about1.md';
+import about1 from './about.md';
 
 const cdn = createCDN({ fetchGitHub, getFastestHost, resetCDNContext });
 
 useParentTheme([withTypography(), withCodeFont()]);
-// const blobUrl: Ref<string | null> = ref(null)
-
-// async function loadBackground(){
-//     if (blobUrl.value) return;
-//     try {
-//           const resp = await cdn.fetch(`gh/JesterRomut/tavern-resources@main/character/OZ/cover_background.png`);
-//     if (!resp.ok) throw new Error(`加载失败:${resp.status}；${resp.statusText}`);
-//       const blob = await resp.blob();
-//       if (blob) {
-//         blobUrl.value = URL.createObjectURL(blob);
-//       }
-//     }catch{
-//       console.error('OZ: 背景图加载失败')
-//     }
-
-// }
-
-// onMounted(() => {
-//   loadBackground();
-// })
 </script>
 
 <template>
@@ -40,28 +20,16 @@ useParentTheme([withTypography(), withCodeFont()]);
     <p>作者@Kernschmelze。OZ，只是一个因特异功能实验室倒闭而出来混饭吃的超能力者。</p>
     <p>“大家早就不需要超能力者了。有了计算机和互联网，谁还需要被折弯的勺子和被撬开的锁呢？”</p>
 
-    <StartsBrowser path="OZ" />
+    <StartsBrowser path="Feiguangmon" />
     <AvatarSwitcher
-      path="OZ.Avatar"
+      path="Feiguangmon.Avatar"
       :cdn="cdn"
-      :manifest="{ repo: 'JesterRomut/tavern-resources', path: 'character/OZ/avatar/index.json' }"
+      :manifest="{ repo: 'JesterRomut/tavern-resources', path: 'character/Feiguangmon/avatar/index.json' }"
     ></AvatarSwitcher>
-    <!-- <p>
-      除单击跳转外，新版酒馆点击右下角箭头下的<code>1/{{ starts.length + 1 }}</code
-      >，也可快速跳转开场。
-    </p>
-    <p>
-      游玩出身同一实验室的开局时，给予user任意四字数学家名作为代号（如拉格朗日、克罗内克、勒文海姆）以达到最佳游玩效果。
-    </p>
-    <p>
-      非自用的二改（任何修改）都需授权。二传需标明作者及原帖
-      <br />
-      商业化禁止
-    </p> -->
     <InfoSwipe :pages="splitPages(format(about1, { max_swipes: starts.length + 1 }))"></InfoSwipe>
     <footer>
-      <h1>OZ</h1>
-      <h2>- In my dreams I'm beautiful... and bad. -</h2>
+      <h1>飞光兽</h1>
+      <h2>魙龙不死，昴星不升。</h2>
     </footer>
   </main>
 </template>
@@ -77,7 +45,7 @@ export default {
 @import url('data:text/css,%40font-face%7Bfont-family%3A%22ZSFT-685%22%3Bsrc%3Aurl(%22https%3A%2F%2Ffontsapi.zeoseven.com%2F685%2Fmain.woff2%22)%20format(%22woff2%22)%3Bfont-style%3Anormal%3Bfont-weight%3A400%3Bfont-display%3Aswap%3B%7D');
 @import url('data:text/css,%40font-face%7Bfont-family%3A%22ZSFT-651%22%3Bsrc%3Aurl(%22https%3A%2F%2Ffontsapi.zeoseven.com%2F651%2Fitalic.woff2%22)%20format(%22woff2%22)%3Bfont-style%3Aitalic%3Bfont-weight%3A100%20900%3Bfont-display%3Aswap%3B%7D%40font-face%7Bfont-family%3A%22ZSFT-651%22%3Bsrc%3Aurl(%22https%3A%2F%2Ffontsapi.zeoseven.com%2F651%2Fmain.woff2%22)%20format(%22woff2%22)%3Bfont-style%3Anormal%3Bfont-weight%3A100%20900%3Bfont-display%3Aswap%3B%7D');
 :root {
-  --oz-highlight: mediumpurple;
+  --oz-highlight: rgb(177, 50, 75);
 }
 main {
   /* background: linear-gradient(16
@@ -86,7 +54,7 @@ main {
   font-family: var(--theme-font-family);
   background-image:
     linear-gradient(122deg, rgb(10, 10, 10), rgba(35, 35, 35, 0.85)),
-    url('https://cdn.jsdelivr.net/gh/JesterRomut/tavern-resources@latest/character/OZ/cover_background.png');
+    url('https://cdn.jsdelivr.net/gh/JesterRomut/tavern-resources@main/character/Feiguangmon/cover_background.png');
   background-size: cover;
   background-position: center;
   border-radius: 4px;

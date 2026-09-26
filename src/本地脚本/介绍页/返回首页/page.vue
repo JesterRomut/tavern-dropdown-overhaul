@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { useParentTheme, withColors, withTypography } from '../shared/theme';
-import { changeGreeting } from '../shared/util';
+import { useParentTheme, withColors, withTypography } from '../theme';
+import { changeGreeting } from '../util';
 
 useParentTheme([withColors(), withTypography()]);
 </script>

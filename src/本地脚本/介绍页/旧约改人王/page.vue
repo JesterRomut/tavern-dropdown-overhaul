@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { createCDN, fetchGitHub, getFastestHost, resetCDNContext } from '@util/cdn';
-import AvatarSwitcher from '../shared/AvatarSwitcher.vue';
-import { starts } from '../shared/starts';
-import StartsBrowser from '../shared/StartsBrowser.vue';
-import { useParentTheme, withCodeFont, withTypography } from '../shared/theme';
+import AvatarSwitcher from '../AvatarSwitcher.vue';
+import { starts } from '../starts';
+import StartsBrowser from '../StartsBrowser.vue';
+import { useParentTheme, withCodeFont, withTypography } from '../theme';
 
 const cdn = createCDN({ fetchGitHub, getFastestHost, resetCDNContext });
 useParentTheme([withTypography(), withCodeFont()]);
@@ -36,7 +36,7 @@ useParentTheme([withTypography(), withCodeFont()]);
 </template>
 
 <style lang="scss">
-@use '../shared/common.scss';
+@use '../common.scss';
 @import url('data:text/css,%40font-face%7Bfont-family%3A%22ZSFT-685%22%3Bsrc%3Aurl(%22https%3A%2F%2Ffontsapi.zeoseven.com%2F685%2Fmain.woff2%22)%20format(%22woff2%22)%3Bfont-style%3Anormal%3Bfont-weight%3A400%3Bfont-display%3Aswap%3B%7D');
 @import url('data:text/css,%40font-face%7Bfont-family%3A%22ZSFT-651%22%3Bsrc%3Aurl(%22https%3A%2F%2Ffontsapi.zeoseven.com%2F651%2Fitalic.woff2%22)%20format(%22woff2%22)%3Bfont-style%3Aitalic%3Bfont-weight%3A100%20900%3Bfont-display%3Aswap%3B%7D%40font-face%7Bfont-family%3A%22ZSFT-651%22%3Bsrc%3Aurl(%22https%3A%2F%2Ffontsapi.zeoseven.com%2F651%2Fmain.woff2%22)%20format(%22woff2%22)%3Bfont-style%3Anormal%3Bfont-weight%3A100%20900%3Bfont-display%3Aswap%3B%7D');
 :root {
@@ -47,7 +47,7 @@ main {
   /* background: linear-gradient(160deg, rgba(45, 45, 45, 0.75), rgba(35, 35, 35, 0.85)); */
   background-image:
     linear-gradient(122deg, rgb(10, 10, 10), rgba(35, 35, 35, 0.85)),
-    url('https://cdn.jsdelivr.net/gh/JesterRomut/tavern-resources@main/character/AngelAfterAngel/cover_background.png');
+    url('https://cdn.jsdelivr.net/gh/JesterRomut/tavern-resources@latest/character/AngelAfterAngel/cover_background.png');
   background-size: cover;
   background-position: center;
   border-radius: 4px;
