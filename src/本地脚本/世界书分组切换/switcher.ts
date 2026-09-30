@@ -1,15 +1,16 @@
 import { teleportStyle } from '@util/script';
 import comp from './comp.vue';
-import { type SwitchGroup } from './type';
+import { type SwitchGroup, type SwitcherConfig } from './type';
 
-type Config = object;
+const SCRIPT_UI_ID = 'worldbook-group-switcher';
 
-function injectUI(groups: SwitchGroup[]) {
-  const app = createApp(comp, { groups }).use(createPinia());
-  const $app = $('<div>').attr('class', 'world_entry');
+function injectUI(groups: SwitchGroup[], worldbookName: string) {
+  if ($(`#${SCRIPT_UI_ID}`).length) return;
+
+  const app = createApp(comp, { groups, worldbookName }).use(createPinia());
+  const $app = $('<div>').attr('id', SCRIPT_UI_ID).attr('class', 'world_entry');
 
   $app.prependTo('#world_popup_entries_list');
-  // $app.insertBefore('#WIEntryHeaderTitlesPC');
   app.mount($app[0]);
 
   const { destroy } = teleportStyle();
@@ -21,7 +22,7 @@ function injectUI(groups: SwitchGroup[]) {
   });
 }
 
-export async function init(conf: Config) {
+export async function init(conf: SwitcherConfig) {
   let char: Character;
   try {
     const id = getCurrentCharacterId();
@@ -35,9 +36,6 @@ export async function init(conf: Config) {
 
   const { worldbook: worldbookName } = char;
   if (!worldbookName) return;
-  const worldbook = await getWorldbook(worldbookName);
-  // for (const entry of worldbook) {
-  //   console.log(entry);
-  // }
-  injectUI([{ label: '测试', match: /数码世界 -/gm }]);
+
+  injectUI(conf.groups, worldbookName);
 }
