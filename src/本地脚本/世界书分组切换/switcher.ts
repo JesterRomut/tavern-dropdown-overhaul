@@ -2,13 +2,13 @@ import { teleportStyle } from '@util/script';
 import comp from './comp.vue';
 import { type SwitchGroup, type SwitcherConfig } from './type';
 
-const SCRIPT_UI_ID = 'worldbook-group-switcher';
+const scriptId = getScriptId();
 
 function injectUI(groups: SwitchGroup[], worldbookName: string) {
-  if ($(`#${SCRIPT_UI_ID}`).length) return;
+  if ($(`#${scriptId}`).length) return;
 
   const app = createApp(comp, { groups, worldbookName }).use(createPinia());
-  const $app = $('<div>').attr('id', SCRIPT_UI_ID).attr('class', 'world_entry');
+  const $app = $('<div>').attr('id', scriptId).attr('class', 'world_entry');
 
   $app.prependTo('#world_popup_entries_list');
   app.mount($app[0]);

@@ -1,4 +1,6 @@
 {
+  "files.autoSave": "onFocusChange",
+  "antigravity.autoAcceptOnChat": true,
   "editor.formatOnSave": true,
   "editor.codeActionsOnSave": {
     "source.addMissingImports.ts": "explicit",
