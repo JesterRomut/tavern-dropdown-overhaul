@@ -120,7 +120,7 @@ ul.wi-card-entry {
 .wigroup-list-item {
   display: flex;
   gap: 0.5rem;
-  align-items: baseline;
+  align-items: center;
   margin-block: 0.5rem;
 }
 </style>
