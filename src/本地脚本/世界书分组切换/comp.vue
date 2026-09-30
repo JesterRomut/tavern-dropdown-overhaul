@@ -59,6 +59,33 @@ async function handleToggleClick(group: SwitchGroup) {
     { render: 'immediate' },
   );
 }
+
+async function handleExportClick(group: SwitchGroup) {
+  if (!group.export) return;
+
+  const targetName = group.export.name;
+  const message = `将导出为「${targetName}」，如有同名世界书会覆盖，是否确定导出？`;
+
+  const result = await SillyTavern.callGenericPopup(message, SillyTavern.POPUP_TYPE.CONFIRM, '', {
+    okButton: '确定',
+    cancelButton: '取消',
+  });
+
+  if (result !== SillyTavern.POPUP_RESULT.AFFIRMATIVE && result !== 1 && result !== true) {
+    return;
+  }
+
+  const worldbook = await getWorldbook(props.worldbookName);
+  const matchedEntries = worldbook.filter(entry => isMatch(entry.name, group.match));
+
+  if (matchedEntries.length === 0) {
+    toastr.warning(`未找到匹配的条目`);
+    return;
+  }
+
+  await createOrReplaceWorldbook(targetName, klona(matchedEntries), { render: 'immediate' });
+  toastr.success(`已成功导出世界书「${targetName}」`);
+}
 </script>
 
 <template>
@@ -75,7 +102,12 @@ async function handleToggleClick(group: SwitchGroup) {
       <div>
         {{ group.label }}
       </div>
-      <div class="menu_button fa-solid fa-file-export interactable"></div>
+      <div
+        v-if="group.export"
+        class="menu_button fa-solid fa-file-export interactable"
+        title="导出为独立世界书"
+        @click.stop="handleExportClick(group)"
+      ></div>
     </li>
   </ul>
 </template>

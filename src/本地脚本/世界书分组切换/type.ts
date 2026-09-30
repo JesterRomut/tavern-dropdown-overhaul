@@ -8,7 +8,7 @@ export interface SwitchGroup {
 
   export?: {
     name: string;
-  };
+  } | null;
 }
 
 export interface SwitcherConfig {
