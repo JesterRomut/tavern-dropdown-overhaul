@@ -5,6 +5,10 @@ export interface SwitchGroup {
   label: string;
   /** 匹配条目名称（name）的正则表达式或断言函数 */
   match: RegExp | ((name: string) => boolean);
+
+  export?: {
+    name: string;
+  };
 }
 
 export interface SwitcherConfig {

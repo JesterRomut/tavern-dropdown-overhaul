@@ -33,7 +33,7 @@ onMounted(() => {
   initState();
 });
 
-async function handleClick(group: SwitchGroup) {
+async function handleToggleClick(group: SwitchGroup) {
   const current = toggleStates.value[group.id] ?? false;
   const target = !current;
   toggleStates.value[group.id] = target;
@@ -70,11 +70,12 @@ async function handleClick(group: SwitchGroup) {
           'fa-toggle-on': toggleStates[group.id],
           'fa-toggle-off': !toggleStates[group.id],
         }"
-        @click="handleClick(group)"
+        @click="handleToggleClick(group)"
       ></div>
       <div>
         {{ group.label }}
       </div>
+      <div class="menu_button fa-solid fa-file-export interactable"></div>
     </li>
   </ul>
 </template>
@@ -87,7 +88,7 @@ ul.wi-card-entry {
 .wigroup-list-item {
   display: flex;
   gap: 0.5rem;
-  align-items: center;
+  align-items: baseline;
   margin-block: 0.5rem;
 }
 </style>
