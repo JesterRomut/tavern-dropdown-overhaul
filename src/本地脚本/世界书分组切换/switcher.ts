@@ -8,9 +8,11 @@ function injectUI(groups: SwitchGroup[], worldbookName: string) {
   if ($(`#${scriptId}`).length) return;
 
   const app = createApp(comp, { groups, worldbookName }).use(createPinia());
-  const $app = $('<div>').attr('id', scriptId).attr('class', 'world_entry');
+  const $app = $('<div>').attr('id', scriptId).attr('class', 'wide100p');
 
-  $app.prependTo('#world_popup_entries_list');
+  $app.prependTo('#world_popup');
+
+  $app.appendTo('#WIMultiSelector');
   app.mount($app[0]);
 
   const { destroy } = teleportStyle();

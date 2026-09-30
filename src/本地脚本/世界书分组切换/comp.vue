@@ -38,25 +38,32 @@ async function handleClick(group: SwitchGroup) {
   const target = !current;
   toggleStates.value[group.id] = target;
 
-  updateVariablesWith(vars => {
-    vars[group.id] = target;
-    return vars;
-  }, { type: 'script' });
+  updateVariablesWith(
+    vars => {
+      vars[group.id] = target;
+      return vars;
+    },
+    { type: 'script' },
+  );
 
-  await updateWorldbookWith(props.worldbookName, entries => {
-    for (const entry of entries) {
-      if (isMatch(entry.name, group.match)) {
-        entry.enabled = target;
+  await updateWorldbookWith(
+    props.worldbookName,
+    entries => {
+      for (const entry of entries) {
+        if (isMatch(entry.name, group.match)) {
+          entry.enabled = target;
+        }
       }
-    }
-    return entries;
-  }, { render: 'debounced' });
+      return entries;
+    },
+    { render: 'immediate' },
+  );
 }
 </script>
 
 <template>
-  <form class="world_entry_form wi-card-entry">
-    <div v-for="group in groups" :key="group.id">
+  <ul class="world_entry wi-card-entry">
+    <li v-for="group in groups" :key="group.id" class="wigroup-list-item">
       <div
         class="fa-solid killSwitch"
         :class="{
@@ -68,6 +75,19 @@ async function handleClick(group: SwitchGroup) {
       <div>
         {{ group.label }}
       </div>
-    </div>
-  </form>
+    </li>
+  </ul>
 </template>
+
+<style lang="scss" scoped>
+ul.wi-card-entry {
+  margin: 0;
+  margin-block: 0.25rem;
+}
+.wigroup-list-item {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-block: 0.5rem;
+}
+</style>
