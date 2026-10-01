@@ -1,10 +1,25 @@
 <script setup lang="ts">
-import { type SwitchGroup } from './type';
+import { type Directive } from 'vue';
+import { type GroupLabel, type SwitchGroup } from './type';
 
 const props = defineProps<{
   groups: SwitchGroup[];
   worldbookName: string;
 }>();
+
+const vLabel: Directive<HTMLElement, GroupLabel> = (el, binding) => {
+  el.replaceChildren();
+  const val = typeof binding.value === 'function' ? binding.value() : binding.value;
+  if (!val) return;
+
+  if (typeof val === 'string') {
+    el.innerHTML = val;
+  } else if ('jquery' in (val as any)) {
+    $(el).append(val as JQuery);
+  } else if (val instanceof Node) {
+    el.appendChild(val);
+  }
+};
 
 const toggleStates = ref<Record<string, boolean>>({});
 
@@ -77,35 +92,37 @@ async function handleExportClick(group: SwitchGroup) {
 <template>
   <table class="world_entry wi-card-entry">
     <tr v-for="group in groups" :key="group.id" class="wigroup-list-item">
-      <td
-        class="fa-solid killSwitch"
-        :class="{
-          'fa-toggle-on': toggleStates[group.id],
-          'fa-toggle-off': !toggleStates[group.id],
-        }"
-        @click="handleToggleClick(group)"
-      ></td>
       <td>
-        {{ group.label }}
+        <div
+          class="fa-solid killSwitch"
+          :class="{ 'fa-toggle-on': toggleStates[group.id], 'fa-toggle-off': !toggleStates[group.id] }"
+          @click="handleToggleClick(group)"
+        ></div>
       </td>
-      <td
-        v-if="group.export"
-        class="menu_button fa-solid fa-file-export interactable"
-        title="导出为独立世界书"
-        @click.stop="handleExportClick(group)"
-      ></td>
+      <td v-label="group.label"></td>
+      <td v-if="group.export">
+        <div
+          class="menu_button fa-solid fa-file-export interactable"
+          title="导出为独立世界书"
+          @click.stop="handleExportClick(group)"
+        ></div>
+      </td>
     </tr>
   </table>
 </template>
 
 <style lang="scss" scoped>
-ul.wi-card-entry {
+table.wi-card-entry {
   margin: 0;
   margin-block: 0.25rem;
-}
-.wigroup-list-item {
-  gap: 0.5rem;
-  align-items: center;
-  margin-block: 0.5rem;
+  border-spacing: 0 0.5rem;
+  tr {
+    align-items: center;
+    margin-block: 0.5rem;
+
+    td {
+      padding-inline: 0.5rem;
+    }
+  }
 }
 </style>
