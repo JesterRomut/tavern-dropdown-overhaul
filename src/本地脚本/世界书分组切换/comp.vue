@@ -15,17 +15,11 @@ function isMatch(name: string, matcher: SwitchGroup['match']): boolean {
 }
 
 async function initState() {
-  const saved = (getVariables({ type: 'script' }) || {}) as Record<string, boolean>;
   const worldbook = await getWorldbook(props.worldbookName);
 
   for (const group of props.groups) {
-    if (typeof saved[group.id] === 'boolean') {
-      toggleStates.value[group.id] = saved[group.id];
-    } else {
-      const matchedEntries = worldbook.filter(entry => isMatch(entry.name, group.match));
-      const hasEnabled = matchedEntries.some(entry => entry.enabled);
-      toggleStates.value[group.id] = hasEnabled;
-    }
+    const matchedEntries = worldbook.filter(entry => isMatch(entry.name, group.match));
+    toggleStates.value[group.id] = matchedEntries.some(entry => entry.enabled);
   }
 }
 
@@ -37,14 +31,6 @@ async function handleToggleClick(group: SwitchGroup) {
   const current = toggleStates.value[group.id] ?? false;
   const target = !current;
   toggleStates.value[group.id] = target;
-
-  updateVariablesWith(
-    vars => {
-      vars[group.id] = target;
-      return vars;
-    },
-    { type: 'script' },
-  );
 
   await updateWorldbookWith(
     props.worldbookName,
@@ -89,27 +75,27 @@ async function handleExportClick(group: SwitchGroup) {
 </script>
 
 <template>
-  <ul class="world_entry wi-card-entry">
-    <li v-for="group in groups" :key="group.id" class="wigroup-list-item">
-      <div
+  <table class="world_entry wi-card-entry">
+    <tr v-for="group in groups" :key="group.id" class="wigroup-list-item">
+      <td
         class="fa-solid killSwitch"
         :class="{
           'fa-toggle-on': toggleStates[group.id],
           'fa-toggle-off': !toggleStates[group.id],
         }"
         @click="handleToggleClick(group)"
-      ></div>
-      <div>
+      ></td>
+      <td>
         {{ group.label }}
-      </div>
-      <div
+      </td>
+      <td
         v-if="group.export"
         class="menu_button fa-solid fa-file-export interactable"
         title="导出为独立世界书"
         @click.stop="handleExportClick(group)"
-      ></div>
-    </li>
-  </ul>
+      ></td>
+    </tr>
+  </table>
 </template>
 
 <style lang="scss" scoped>
@@ -118,7 +104,6 @@ ul.wi-card-entry {
   margin-block: 0.25rem;
 }
 .wigroup-list-item {
-  display: flex;
   gap: 0.5rem;
   align-items: center;
   margin-block: 0.5rem;
