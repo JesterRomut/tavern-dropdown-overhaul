@@ -1,5 +1,13 @@
 export type GroupLabel = string | HTMLElement | JQuery | (() => string | HTMLElement | JQuery);
 
+export const ScriptVariables = z
+  .object({
+    previouslyDisabled: z.record(z.string(), z.array(z.string())).default({}),
+  })
+  .prefault({});
+
+export type ScriptVariables = z.infer<typeof ScriptVariables>;
+
 export interface SwitchGroup {
   /** 唯一标识，用于持久化存储索引与状态绑定 */
   id: string;

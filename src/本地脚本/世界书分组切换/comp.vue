@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { type Directive } from 'vue';
-import { type GroupLabel, type SwitchGroup } from './type';
+import { type GroupLabel, type SwitchGroup, ScriptVariables } from './type';
 
 const props = defineProps<{
   groups: SwitchGroup[];
@@ -50,9 +50,29 @@ async function handleToggleClick(group: SwitchGroup) {
   await updateWorldbookWith(
     props.worldbookName,
     entries => {
+      const matched = entries.filter(entry => isMatch(entry.name, group.match));
+
+      if (!target) {
+        if (matched.some(e => e.enabled)) {
+          const previouslyDisabled = matched.filter(e => !e.enabled).map(e => e.name);
+          updateVariablesWith(
+            rawVars => {
+              const vars = ScriptVariables.parse(rawVars || {});
+              vars.previouslyDisabled[group.id] = previouslyDisabled;
+              return vars;
+            },
+            { type: 'script' },
+          );
+        }
+      }
+
+      const vars = !target ? null : ScriptVariables.parse(getVariables({ type: 'script' }) || {});
+      const disabledSet = new Set(vars?.previouslyDisabled[group.id] || []);
+      const shouldApplyFilter = target && disabledSet.size > 0;
+
       for (const entry of entries) {
         if (isMatch(entry.name, group.match)) {
-          entry.enabled = target;
+          entry.enabled = target ? !shouldApplyFilter || !disabledSet.has(entry.name) : false;
         }
       }
       return entries;
