@@ -11,7 +11,7 @@ $(() => {
       {
         id: 'digital_world',
         label: label('飞光兽：数码世界', '如数码世界编年史、三主机、吃穿住行。使用外置数码世界书时关闭。'),
-        match: /^Digimon[\s\S]*? - /,
+        match: /^Digimon[\s\S]*?( - |\.)/,
         export: { name: '数码世界@飞光兽' },
       },
       {
