@@ -143,8 +143,10 @@ const openDropdown = ($select: JQuery<HTMLElement>, $anchorInput?: JQuery<HTMLEl
   }, 10);
 };
 
+let lastTriggerTime = 0;
+
 const handleSelectTrigger = (e: JQuery.TriggeredEvent) => {
-  if (e.button !== 0) return;
+  if (e.button !== undefined && e.button !== 0) return;
   const target = e.currentTarget as HTMLElement;
   const $select = $(target);
 
@@ -152,13 +154,19 @@ const handleSelectTrigger = (e: JQuery.TriggeredEvent) => {
     return;
   }
 
-  // 如果已被 Select2 接管，跳过 mousedown，交由 select2 专属逻辑处理
+  // 如果已被 Select2 接管，跳过，交由 select2 专属逻辑处理
   if ($select.hasClass('select2-hidden-accessible') || Boolean($select.data('select2'))) {
     return;
   }
 
   e.preventDefault();
   e.stopPropagation();
+
+  const now = Date.now();
+  if (now - lastTriggerTime < 250) {
+    return;
+  }
+  lastTriggerTime = now;
 
   const isActive = $select.hasClass(ACTIVE_CLASS);
   closeDropdown();
@@ -210,18 +218,22 @@ const init = () => {
     }
   });
 
-  // 2. 原生单选 select 触发拦截（排除已初始化 Select2 的元素）
-  $(targetDoc).on(`mousedown.${EVENT_NAMESPACE}`, 'select:not([multiple])', handleSelectTrigger);
+  // 2. 原生 select（单选与多选）触发拦截（排除已初始化 Select2 的元素）
+  $(targetDoc).on(
+    `pointerdown.${EVENT_NAMESPACE} mousedown.${EVENT_NAMESPACE}`,
+    'select',
+    handleSelectTrigger,
+  );
 
-  $(targetDoc).on(`click.${EVENT_NAMESPACE}`, 'select:not([multiple])', function (e) {
+  $(targetDoc).on(`click.${EVENT_NAMESPACE}`, 'select', function (e) {
     const $select = $(this);
     if (!$select.hasClass('select2-hidden-accessible') && !$select.data('select2')) {
       e.preventDefault();
     }
   });
 
-  // 3. 原生单选 select 键盘交互（空格与回车展开）
-  $(targetDoc).on(`keydown.${EVENT_NAMESPACE}`, 'select:not([multiple])', function (e) {
+  // 3. 原生 select 键盘交互（空格与回车展开）
+  $(targetDoc).on(`keydown.${EVENT_NAMESPACE}`, 'select', function (e) {
     if (e.key === ' ' || e.key === 'Enter') {
       const $select = $(this);
       if ($select.hasClass('select2-hidden-accessible') || Boolean($select.data('select2'))) {
