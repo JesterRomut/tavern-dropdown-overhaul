@@ -7,7 +7,8 @@ export const SCROLL_NAMESPACE = 'k3rn-dropdown-scroll';
 export const SEARCH_THRESHOLD = 7; // 7是完美的数字哦 阿门
 
 export const DEFAULT_THEME_NAME = '默认';
-export const DEFAULT_STYLE = `#${DROPDOWN_ID} {
+export const DEFAULT_STYLE = `\
+#${DROPDOWN_ID} {
     margin: 0;
     position: absolute;
     z-index: 2147483648 !important;
@@ -146,6 +147,7 @@ export const Config = z
       .prefault({}),
     style: z.string().default(DEFAULT_STYLE),
     overrideSelect2: z.boolean().default(true),
+    convertMultiToSelect2: z.boolean().default(true),
   })
   .prefault({});
 
@@ -219,6 +221,18 @@ export const isTakeOverSelect2Enabled = (): boolean => {
   try {
     const vars = getVariables({ type: 'script', script_id: getScriptId() });
     return Config.parse(vars).overrideSelect2;
+  } catch {
+    return true;
+  }
+};
+
+export const isConvertMultiToSelect2Enabled = (): boolean => {
+  if (getActivePinia()) {
+    return useConfigStore()?.settings?.convertMultiToSelect2;
+  }
+  try {
+    const vars = getVariables({ type: 'script', script_id: getScriptId() });
+    return Config.parse(vars).convertMultiToSelect2;
   } catch {
     return true;
   }

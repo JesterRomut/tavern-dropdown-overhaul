@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { createCDN, fetchGitHub, getFastestHost, resetCDNContext } from '@util/cdn';
-import AvatarSwitcher from '../shared/AvatarSwitcher.vue';
-import StartsBrowser from '../shared/StartsBrowser.vue';
-import { vTooltip } from '../shared/tooltip';
-import InfoSwipe from './InfoSwipe.vue';
+import AvatarSwitcher from '../AvatarSwitcher.vue';
+import InfoSwipe from '../InfoSwipe.vue';
+import StartsBrowser from '../StartsBrowser.vue';
+import { vTooltip } from '../tooltip';
 
-import { starts } from '../shared/starts';
-import { useParentTheme, withCodeFont, withTypography } from '../shared/theme';
-import { format, splitPages } from '../shared/util';
+import { starts } from '../starts';
+import { useParentTheme, withCodeFont, withTypography } from '../theme';
+import { format, splitPages } from '../util';
 import about1 from './about1.md';
 
 const cdn = createCDN({ fetchGitHub, getFastestHost, resetCDNContext });
@@ -73,7 +73,7 @@ export default {
 };
 </script>
 <style lang="scss">
-@use '../shared/common.scss';
+@use '../common.scss';
 @import url('data:text/css,%40font-face%7Bfont-family%3A%22ZSFT-685%22%3Bsrc%3Aurl(%22https%3A%2F%2Ffontsapi.zeoseven.com%2F685%2Fmain.woff2%22)%20format(%22woff2%22)%3Bfont-style%3Anormal%3Bfont-weight%3A400%3Bfont-display%3Aswap%3B%7D');
 @import url('data:text/css,%40font-face%7Bfont-family%3A%22ZSFT-651%22%3Bsrc%3Aurl(%22https%3A%2F%2Ffontsapi.zeoseven.com%2F651%2Fitalic.woff2%22)%20format(%22woff2%22)%3Bfont-style%3Aitalic%3Bfont-weight%3A100%20900%3Bfont-display%3Aswap%3B%7D%40font-face%7Bfont-family%3A%22ZSFT-651%22%3Bsrc%3Aurl(%22https%3A%2F%2Ffontsapi.zeoseven.com%2F651%2Fmain.woff2%22)%20format(%22woff2%22)%3Bfont-style%3Anormal%3Bfont-weight%3A100%20900%3Bfont-display%3Aswap%3B%7D');
 :root {
@@ -86,7 +86,7 @@ main {
   font-family: var(--theme-font-family);
   background-image:
     linear-gradient(122deg, rgb(10, 10, 10), rgba(35, 35, 35, 0.85)),
-    url('https://cdn.jsdelivr.net/gh/JesterRomut/tavern-resources@main/character/OZ/cover_background.png');
+    url('https://cdn.jsdelivr.net/gh/JesterRomut/tavern-resources@latest/character/OZ/cover_background.png');
   background-size: cover;
   background-position: center;
   border-radius: 4px;

@@ -5,7 +5,7 @@
 @.cursor/rules/酒馆助手接口.mdc
 @.cursor/rules/脚本.mdc
 
-以上酒馆相关必看，不看找人弄你
+以上酒馆相关**必看**，不看找人弄你
 然后zod用v4规范，deprecated的东西不要用
 
 @.cursor/rules/前端界面.mdc
@@ -17,12 +17,7 @@
 
 debug必看，里面写了如何用Chrome DevTools MCP来实操浏览器
 
----
-
 还有，给我讲中文
-
-然后如果你弄好了：通常先讨论方案，不要直接写
-如果不经同意直接写了我直接找人弄你
 
 还有不准加emoji，加了我找人弄你
 
