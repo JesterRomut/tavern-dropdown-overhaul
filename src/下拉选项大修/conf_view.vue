@@ -296,11 +296,7 @@ onBeforeUnmount(destroySelect2);
             <div class="flex-container">
               <h3>示例</h3>
             </div>
-            <select
-              ref="exampleSelectRef"
-              class="k3rn-example-select"
-              :multiple="toggleExampleMultiple"
-            >
+            <select ref="exampleSelectRef" class="wide100p" :multiple="toggleExampleMultiple">
               <option
                 v-for="(value, index) in currentExampleTexts"
                 :key="value"
@@ -324,7 +320,7 @@ onBeforeUnmount(destroySelect2);
             <div class="flex-container">
               <label class="checkbox_label" type="checkbox" title="Select2">
                 <input v-model="toggleExampleSelect2" type="checkbox" />
-                <span>Select2处理</span>
+                <span>Select2</span>
               </label>
             </div>
           </div>
@@ -334,9 +330,8 @@ onBeforeUnmount(destroySelect2);
             <h3>主题</h3>
           </div>
 
-          <!-- 主题预设工具栏 -->
           <div class="flex-container k3rn-theme-toolbar">
-            <select v-model="settings.theme.current" class="k3rn-theme-select" title="切换主题预设">
+            <select v-model="settings.theme.current" title="切换主题">
               <option :value="DEFAULT_THEME_NAME">默认 (内置)</option>
               <option v-for="t in settings.theme.customThemes" :key="t.name" :value="t.name">
                 {{ t.name }}
@@ -354,7 +349,7 @@ onBeforeUnmount(destroySelect2);
               "
               @click="saveCurrentTheme"
             ></div>
-            <div class="menu_button fa-solid fa-plus" title="新建主题 (基于当前样式)" @click="createNewTheme"></div>
+            <div class="menu_button fa-solid fa-plus" title="新建主题" @click="createNewTheme"></div>
             <div
               class="menu_button fa-solid fa-pen-to-square"
               :class="{ disabled: isDefaultTheme }"
@@ -383,22 +378,11 @@ onBeforeUnmount(destroySelect2);
             </div>
           </div>
 
-          <div class="flex-container">
-            <label for="k3rn-dropdown-extension-setting">{{ `主题色表 - 随酒馆主题变动` }}</label>
+          <div>
+            <b>{{ `主题色表 - 随酒馆主题变动` }}</b>
             <br />
             <span>CSS使用例：<code>var(--SmartThemeBodyColor)</code></span>
             <div class="k3rn-color-grid">
-              <!--
-            --SmartThemeEmColor: rgba(150, 150, 150, 1);
-    --SmartThemeUnderlineColor: rgba(79, 154, 255, 0.9);
-    --SmartThemeQuoteColor: rgba(89, 146, 221, 1);
-    --SmartThemeBlurTintColor: rgba(52, 58, 62, 0.8);
-    --SmartThemeChatTintColor: rgba(42, 42, 42, 0);
-    --SmartThemeUserMesBlurTintColor: rgba(32, 32, 32, 0.57);
-    --SmartThemeBotMesBlurTintColor: rgba(0, 0, 0, 0.61);
-    --SmartThemeShadowColor: rgba(32, 33, 36, 1);
-    --SmartThemeBorderColor: rgba(32, 33, 36, 1);
-            -->
               <div>--SmartThemeBodyColor</div>
               <div></div>
               <div>--SmartThemeEmColor</div>
@@ -436,22 +420,20 @@ onBeforeUnmount(destroySelect2);
             <h3>选项</h3>
           </div>
           <div class="flex-container">
-            <label class="checkbox_label" type="checkbox" title="开启后将接管所有 Select2 下拉框">
+            <label class="checkbox_label" type="checkbox" title="接管如PC端世界书选择&多选框、附加世界书绑定框。">
               <input v-model="settings.overrideSelect2" type="checkbox" />
               <div>
-
-              <span>接管Select2</span>
-              <small>开启后接管如PC端世界书选择&多选框、附加世界书绑定框。</small>
+                <span>接管Select2</span>
+                <small>接管如PC端世界书选择&多选框、附加世界书绑定框。</small>
               </div>
             </label>
           </div>
           <div class="flex-container">
-            <label class="checkbox_label" type="checkbox" title="开启后将原生多选框自动转换为Select2）">
+            <label class="checkbox_label" type="checkbox" title="自动将原生多选框转换为Select2：如移动端世界书多选框。">
               <input v-model="settings.convertMultiToSelect2" type="checkbox" />
-                            <div>
-
-              <span>自动转换Select2</span>
-              <small>开启后自动将原生多选框转换为Select2：如移动端世界书多选框。</small>
+              <div>
+                <span>自动转换Select2</span>
+                <small>自动将原生多选框转换为Select2：如移动端世界书多选框。</small>
               </div>
             </label>
           </div>
@@ -461,18 +443,22 @@ onBeforeUnmount(destroySelect2);
   </div>
 </template>
 
-<style scoped>
-.checkbox_label > div{
-  display: flex;
-  flex-direction: column;
+<style scoped lang="scss">
+.flex-container:has(.checkbox_label small) {
+  margin-bottom: 0.5rem;
+}
+
+.checkbox_label {
+  align-items: center;
+  > div {
+    display: flex;
+    flex-direction: column;
+  }
 }
 
 .info-block.warning {
   display: flex;
   gap: 0.5rem;
-  width: 100%;
-}
-.k3rn-example-select {
   width: 100%;
 }
 
@@ -481,54 +467,12 @@ onBeforeUnmount(destroySelect2);
   align-items: baseline;
   gap: 5px;
   flex-wrap: wrap;
+
+  > select {
+    flex: 1 1 140px;
+    min-width: 120px;
+  }
 }
-
-.k3rn-theme-toolbar .menu_button.is-unsaved {
-  color: var(--SmartThemeQuoteColor, #ffc107);
-}
-
-.k3rn-theme-select {
-  flex: 1 1 140px;
-  min-width: 120px;
-}
-
-/* .k3rn-theme-toolbar .menu_button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  cursor: pointer;
-  flex-shrink: 0;
-  border-radius: 4px;
-} */
-
-/* .k3rn-theme-toolbar .menu_button.disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-  pointer-events: none;
-} */
-/*
-.k3rn-readonly-tip {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: rgba(255, 193, 7, 0.12);
-  border-left: 3px solid #ffc107;
-  border-radius: 4px;
-  font-size: 0.85em;
-  color: var(--SmartThemeBodyColor, #eee);
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.k3rn-readonly-tip i {
-  color: #ffc107;
-  font-size: 1.1em;
-  flex-shrink: 0;
-} */
 
 textarea.is-readonly {
   opacity: 0.8;
@@ -538,56 +482,43 @@ textarea.is-readonly {
 
 .k3rn-color-grid {
   display: grid;
+  margin-top: 0.5rem;
   width: max(80%, 400px);
   grid-template-columns: repeat(2, minmax(0, 1fr));
   font-size: 0.8em;
   font-family: 'Consolas', Courier, monospace;
-}
-
-.k3rn-color-grid > div:nth-child(even) {
-  width: 100%;
-}
-
-/**
---SmartThemeEmColor: rgba(150, 150, 150, 1);
-    --SmartThemeUnderlineColor: rgba(79, 154, 255, 0.9);
-    --SmartThemeQuoteColor: rgba(89, 146, 221, 1);
-    --SmartThemeBlurTintColor: rgba(52, 58, 62, 0.8);
-    --SmartThemeChatTintColor: rgba(42, 42, 42, 0);
-    --SmartThemeUserMesBlurTintColor: rgba(32, 32, 32, 0.57);
-    --SmartThemeBotMesBlurTintColor: rgba(0, 0, 0, 0.61);
-    --SmartThemeShadowColor: rgba(32, 33, 36, 1);
-    --SmartThemeBorderColor: rgba(32, 33, 36, 1);
-     */
-
-.k3rn-color-grid > div:nth-child(2) {
-  background-color: var(--SmartThemeBodyColor, #000);
-}
-.k3rn-color-grid > div:nth-child(4) {
-  background-color: var(--SmartThemeEmColor, #000);
-}
-.k3rn-color-grid > div:nth-child(6) {
-  background-color: var(--SmartThemeUnderlineColor, #000);
-}
-.k3rn-color-grid > div:nth-child(8) {
-  background-color: var(--SmartThemeQuoteColor, #000);
-}
-.k3rn-color-grid > div:nth-child(10) {
-  background-color: var(--SmartThemeBlurTintColor, #000);
-}
-.k3rn-color-grid > div:nth-child(12) {
-  background-color: var(--SmartThemeChatTintColor, #000);
-}
-.k3rn-color-grid > div:nth-child(14) {
-  background-color: var(--SmartThemeUserMesBlurTintColor, #000);
-}
-.k3rn-color-grid > div:nth-child(16) {
-  background-color: var(--SmartThemeBotMesBlurTintColor, #000);
-}
-.k3rn-color-grid > div:nth-child(18) {
-  background-color: var(--SmartThemeShadowColor, #000);
-}
-.k3rn-color-grid > div:nth-child(20) {
-  background-color: var(--SmartThemeBorderColor, #000);
+  > div:nth-child(even) {
+    width: 100%;
+  }
+  > div:nth-child(2) {
+    background-color: var(--SmartThemeBodyColor);
+  }
+  > div:nth-child(4) {
+    background-color: var(--SmartThemeEmColor);
+  }
+  > div:nth-child(6) {
+    background-color: var(--SmartThemeUnderlineColor);
+  }
+  > div:nth-child(8) {
+    background-color: var(--SmartThemeQuoteColor);
+  }
+  > div:nth-child(10) {
+    background-color: var(--SmartThemeBlurTintColor);
+  }
+  > div:nth-child(12) {
+    background-color: var(--SmartThemeChatTintColor);
+  }
+  > div:nth-child(14) {
+    background-color: var(--SmartThemeUserMesBlurTintColor);
+  }
+  > div:nth-child(16) {
+    background-color: var(--SmartThemeBotMesBlurTintColor);
+  }
+  > div:nth-child(18) {
+    background-color: var(--SmartThemeShadowColor);
+  }
+  > div:nth-child(20) {
+    background-color: var(--SmartThemeBorderColor);
+  }
 }
 </style>

@@ -7,7 +7,8 @@ export const SCROLL_NAMESPACE = 'k3rn-dropdown-scroll';
 export const SEARCH_THRESHOLD = 7; // 7是完美的数字哦 阿门
 
 export const DEFAULT_THEME_NAME = '默认';
-export const DEFAULT_STYLE = `#${DROPDOWN_ID} {
+export const DEFAULT_STYLE = `\
+#${DROPDOWN_ID} {
     margin: 0;
     position: absolute;
     z-index: 2147483648 !important;
