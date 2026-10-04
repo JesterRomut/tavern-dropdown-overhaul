@@ -59,9 +59,8 @@ export const buildDropdownOptions = (
         $item.toggleClass('selected', willSelect);
 
         // 派发事件，通知 Select2 刷新 Chip 标签并触发宿主监听
-        nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
         nativeSelect.dispatchEvent(new Event('input', { bubbles: true }));
-        $select.trigger('change');
+        nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
       } else {
         // 单选模式：更新值并派发事件，立即关闭下拉面板
         const value = $opt.val() ?? '';
@@ -70,10 +69,8 @@ export const buildDropdownOptions = (
         $opt.prop('selected', true);
         nativeSelect.value = value.toString();
 
-        nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
         nativeSelect.dispatchEvent(new Event('input', { bubbles: true }));
-        $select.trigger('change');
-        $opt.trigger('click');
+        nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
 
         onSingleSelectDone();
       }
