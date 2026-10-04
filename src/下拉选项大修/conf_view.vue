@@ -324,7 +324,7 @@ onBeforeUnmount(destroySelect2);
             <div class="flex-container">
               <label class="checkbox_label" type="checkbox" title="Select2">
                 <input v-model="toggleExampleSelect2" type="checkbox" />
-                <span>Select2</span>
+                <span>Select2处理</span>
               </label>
             </div>
           </div>
@@ -438,13 +438,21 @@ onBeforeUnmount(destroySelect2);
           <div class="flex-container">
             <label class="checkbox_label" type="checkbox" title="开启后将接管所有 Select2 下拉框">
               <input v-model="settings.overrideSelect2" type="checkbox" />
-              <span>接管Select2：如世界书多选框</span>
+              <div>
+
+              <span>接管Select2</span>
+              <small>开启后接管如PC端世界书选择&多选框、附加世界书绑定框。</small>
+              </div>
             </label>
           </div>
           <div class="flex-container">
             <label class="checkbox_label" type="checkbox" title="开启后将原生多选框自动转换为Select2）">
               <input v-model="settings.convertMultiToSelect2" type="checkbox" />
-              <span>多选框转为Select2：如移动端多选</span>
+                            <div>
+
+              <span>自动转换Select2</span>
+              <small>开启后自动将原生多选框转换为Select2：如移动端世界书多选框。</small>
+              </div>
             </label>
           </div>
         </div>
@@ -454,6 +462,11 @@ onBeforeUnmount(destroySelect2);
 </template>
 
 <style scoped>
+.checkbox_label > div{
+  display: flex;
+  flex-direction: column;
+}
+
 .info-block.warning {
   display: flex;
   gap: 0.5rem;
