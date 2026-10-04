@@ -18,9 +18,8 @@ useParentTheme([withTypography(), withCodeFont()]);
 <template>
   <main>
     <p>
-      作者@Kernschmelze。飞光兽，是香巴拉风味光明兽性转。名字来自《苦昼短》。以防你不知道光明兽是谁？嗯……是一个人畜无害的小男孩。
+      作者@Kernschmelze。飞光兽，是香巴拉风味光明兽性转。名字来自《苦昼短》。以防你不知道光明兽是谁？嗯……是个人畜无害的小男孩。
     </p>
-    <p>就像正作中堕天和贝子的关系一样，飞光兽和光明兽的性格不是100%相同的，飞光兽也不认识七大魔王。</p>
 
     <StartsBrowser path="Feiguangmon" />
     <AvatarSwitcher
@@ -31,7 +30,7 @@ useParentTheme([withTypography(), withCodeFont()]);
     <InfoSwipe :pages="splitPages(format(about1, { max_swipes: starts.length + 1 }))"></InfoSwipe>
     <footer>
       <h1>飞光兽</h1>
-      <h2>魙龙不死，昴星不升。</h2>
+      <h2>· 老者不死 少者不哭 ·</h2>
     </footer>
   </main>
 </template>
@@ -44,8 +43,8 @@ export default {
 </script>
 <style lang="scss">
 @use '../common.scss';
-@import url('data:text/css,%40font-face%7Bfont-family%3A%22ZSFT-685%22%3Bsrc%3Aurl(%22https%3A%2F%2Ffontsapi.zeoseven.com%2F685%2Fmain.woff2%22)%20format(%22woff2%22)%3Bfont-style%3Anormal%3Bfont-weight%3A400%3Bfont-display%3Aswap%3B%7D');
-@import url('data:text/css,%40font-face%7Bfont-family%3A%22ZSFT-651%22%3Bsrc%3Aurl(%22https%3A%2F%2Ffontsapi.zeoseven.com%2F651%2Fitalic.woff2%22)%20format(%22woff2%22)%3Bfont-style%3Aitalic%3Bfont-weight%3A100%20900%3Bfont-display%3Aswap%3B%7D%40font-face%7Bfont-family%3A%22ZSFT-651%22%3Bsrc%3Aurl(%22https%3A%2F%2Ffontsapi.zeoseven.com%2F651%2Fmain.woff2%22)%20format(%22woff2%22)%3Bfont-style%3Anormal%3Bfont-weight%3A100%20900%3Bfont-display%3Aswap%3B%7D');
+@import url("https://fontsapi.zeoseven.com/236/main/result.css");
+@import url("https://fontsapi.zeoseven.com/820/main/result.css");
 :root {
   --oz-highlight: rgb(177, 50, 75);
 }
@@ -74,13 +73,13 @@ main {
   }
 
   > footer h1 {
-    font-family: 'ZSFT-685';
+    font-family: "峄山碑篆体";
     font-weight: normal;
     font-size: 1.6rem;
   }
 
   > footer h2 {
-    font-family: 'ZSFT-651';
+    font-family: "Chong Xi Small Seal";
     font-weight: lighter;
     font-size: 0.9rem;
     text-transform: uppercase;
