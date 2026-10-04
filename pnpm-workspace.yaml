@@ -2,6 +2,7 @@ allowBuilds:
   '@parcel/watcher': true
   unrs-resolver: true
   vue-demi: true
+minimumReleaseAge: 0
 minimumReleaseAgeExclude:
   - '@typescript-eslint/eslint-plugin@8.70.1'
   - '@typescript-eslint/parser@8.70.1'

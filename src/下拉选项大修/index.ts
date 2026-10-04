@@ -48,7 +48,7 @@ const closeDropdown = () => {
   $(`#${DROPDOWN_ID}`).remove();
 };
 
-const isMobile = () => SillyTavern.isMobile() ? true : Math.min(window.screen.width, window.outerWidth) <= 500;
+const isMobile = () => (SillyTavern.isMobile() ? true : Math.min(window.screen.width, window.outerWidth) <= 500);
 
 const openDropdown = ($select: JQuery<HTMLElement>, $anchorInput?: JQuery<HTMLElement>) => {
   const doc = getTargetDoc();
@@ -214,6 +214,7 @@ const init = () => {
 
   // 1. 全面接管所有 Select2 下拉框（包括单选、多选及第三方插件/预设转换的 Select2）
   let isUnselecting = false;
+  let isClickingChoice = false;
   $(targetDoc).on(`select2:unselect.${EVENT_NAMESPACE}`, SELECT2_SELECTOR, () => {
     if (!isTakeOverSelect2Enabled()) {
       return;
@@ -238,6 +239,10 @@ const init = () => {
       isUnselecting = false;
       return;
     }
+    if (isClickingChoice) {
+      isClickingChoice = false;
+      return;
+    }
 
     const now = Date.now();
     if (now - lastTriggerTime < 250) {
@@ -258,40 +263,45 @@ const init = () => {
   });
 
   // 1.1 直接拦截 .select2-container 的交互，保障触屏与点击即时响应
-  $(targetDoc).on(
-    `pointerdown.${EVENT_NAMESPACE} mousedown.${EVENT_NAMESPACE}`,
-    '.select2-container',
-    function (e) {
-      if (!isTakeOverSelect2Enabled()) {
-        return;
-      }
-      if ($(e.target).closest('.select2-selection__choice__remove').length) {
-        return;
-      }
-
-      const $container = $(this);
-      const $select = $container.prev('select');
-      if (!$select.length || $select.is(':disabled') || Boolean($select.prop('disabled'))) {
-        return;
-      }
-
-      e.preventDefault();
-      e.stopPropagation();
-
-      const now = Date.now();
-      if (now - lastTriggerTime < 250) {
-        return;
-      }
-      lastTriggerTime = now;
-
-      const isActive = $select.hasClass(ACTIVE_CLASS);
+  $(targetDoc).on(`pointerdown.${EVENT_NAMESPACE} mousedown.${EVENT_NAMESPACE}`, '.select2-container', function (e) {
+    if (!isTakeOverSelect2Enabled()) {
+      return;
+    }
+    if ($(e.target).closest('.select2-selection__choice__remove').length) {
+      return;
+    }
+    // 点击已选胶囊卡片（如全局世界书卡片打开对应世界书），放行原生交互且不打开下拉菜单
+    if ($(e.target).closest('.select2-selection__choice').length) {
+      isClickingChoice = true;
       closeDropdown();
-      if (!isActive) {
-        $container.find('input, textarea').trigger('blur');
-        openDropdown($select, $container);
-      }
-    },
-  );
+      setTimeout(() => {
+        isClickingChoice = false;
+      }, 200);
+      return;
+    }
+
+    const $container = $(this);
+    const $select = $container.prev('select');
+    if (!$select.length || $select.is(':disabled') || Boolean($select.prop('disabled'))) {
+      return;
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const now = Date.now();
+    if (now - lastTriggerTime < 250) {
+      return;
+    }
+    lastTriggerTime = now;
+
+    const isActive = $select.hasClass(ACTIVE_CLASS);
+    closeDropdown();
+    if (!isActive) {
+      $container.find('input, textarea').trigger('blur');
+      openDropdown($select, $container);
+    }
+  });
 
   // 2. 原生 select（单选与多选）触发拦截：pointerdown 唯一触发（无时间锁），mousedown 与 click 绝对拦截
   $(targetDoc).on(`pointerdown.${EVENT_NAMESPACE}`, 'select', handleSelectTrigger);
