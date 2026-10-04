@@ -435,6 +435,12 @@ onBeforeUnmount(destroySelect2);
               <span>接管Select2：如世界书多选框</span>
             </label>
           </div>
+          <div class="flex-container">
+            <label class="checkbox_label" type="checkbox" title="开启后将原生多选框自动转换为Select2）">
+              <input v-model="settings.convertMultiToSelect2" type="checkbox" />
+              <span>多选框转为Select2：如移动端多选</span>
+            </label>
+          </div>
         </div>
       </div>
     </div>

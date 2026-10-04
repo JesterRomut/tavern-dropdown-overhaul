@@ -146,6 +146,7 @@ export const Config = z
       .prefault({}),
     style: z.string().default(DEFAULT_STYLE),
     overrideSelect2: z.boolean().default(true),
+    convertMultiToSelect2: z.boolean().default(true),
   })
   .prefault({});
 
@@ -219,6 +220,18 @@ export const isTakeOverSelect2Enabled = (): boolean => {
   try {
     const vars = getVariables({ type: 'script', script_id: getScriptId() });
     return Config.parse(vars).overrideSelect2;
+  } catch {
+    return true;
+  }
+};
+
+export const isConvertMultiToSelect2Enabled = (): boolean => {
+  if (getActivePinia()) {
+    return useConfigStore()?.settings?.convertMultiToSelect2;
+  }
+  try {
+    const vars = getVariables({ type: 'script', script_id: getScriptId() });
+    return Config.parse(vars).convertMultiToSelect2;
   } catch {
     return true;
   }

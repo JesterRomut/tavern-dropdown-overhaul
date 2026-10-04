@@ -6,6 +6,7 @@ import {
   DROPDOWN_ID,
   EVENT_NAMESPACE,
   injectGlobalStyles,
+  isConvertMultiToSelect2Enabled,
   isTakeOverSelect2Enabled,
   SCROLL_NAMESPACE,
   SEARCH_THRESHOLD,
@@ -47,7 +48,7 @@ const closeDropdown = () => {
   $(`#${DROPDOWN_ID}`).remove();
 };
 
-const isMobile = () => Math.min(window.screen.width, window.outerWidth) <= 500;
+const isMobile = () => SillyTavern.isMobile() ? true : Math.min(window.screen.width, window.outerWidth) <= 500;
 
 const openDropdown = ($select: JQuery<HTMLElement>, $anchorInput?: JQuery<HTMLElement>) => {
   const doc = getTargetDoc();
@@ -143,6 +144,27 @@ const openDropdown = ($select: JQuery<HTMLElement>, $anchorInput?: JQuery<HTMLEl
   }, 10);
 };
 
+const enhanceMultiSelect = ($select: JQuery<HTMLElement>): boolean => {
+  if (!isConvertMultiToSelect2Enabled()) return false;
+  if ($select.hasClass('select2-hidden-accessible') || Boolean($select.data('select2'))) return false;
+  if (typeof ($select as any).select2 !== 'function') return false;
+
+  const isMulti = Boolean($select.prop('multiple') || $select.is('[multiple]'));
+  if (!isMulti) return false;
+
+  const placeholder = $select.attr('placeholder') || $select.attr('data-i18n') || '点击选择...';
+
+  const $dialog = $select.closest('dialog');
+  ($select as any).select2({
+    width: '100%',
+    placeholder,
+    allowClear: true,
+    closeOnSelect: false,
+    ...($dialog.length ? { dropdownParent: $dialog } : {}),
+  });
+  return true;
+};
+
 let lastTriggerTime = 0;
 
 const handleSelectTrigger = (e: JQuery.TriggeredEvent) => {
@@ -154,23 +176,34 @@ const handleSelectTrigger = (e: JQuery.TriggeredEvent) => {
     return;
   }
 
+  // 若开启多选转换且为原生多选框，先行执行提升
+  if (enhanceMultiSelect($select)) {
+    e.preventDefault();
+    e.stopPropagation();
+    const select2 = $select.data('select2');
+    const $anchor = select2?.$container || $select.next('.select2-container') || $select;
+    const isActive = $select.hasClass(ACTIVE_CLASS);
+    closeDropdown();
+    if (!isActive) {
+      $anchor.find('input, textarea').trigger('blur');
+      openDropdown($select, $anchor);
+    }
+    return;
+  }
+
   // 如果已被 Select2 接管，跳过，交由 select2 专属逻辑处理
   if ($select.hasClass('select2-hidden-accessible') || Boolean($select.data('select2'))) {
     return;
   }
 
+  // 只要是原生 select，无条件阻止默认事件，杜绝系统原生菜单呼出
   e.preventDefault();
   e.stopPropagation();
-
-  const now = Date.now();
-  if (now - lastTriggerTime < 250) {
-    return;
-  }
-  lastTriggerTime = now;
 
   const isActive = $select.hasClass(ACTIVE_CLASS);
   closeDropdown();
   if (!isActive) {
+    $select.trigger('blur');
     openDropdown($select, $select);
   }
 };
@@ -206,6 +239,12 @@ const init = () => {
       return;
     }
 
+    const now = Date.now();
+    if (now - lastTriggerTime < 250) {
+      return;
+    }
+    lastTriggerTime = now;
+
     const select2 = $select.data('select2');
     const $anchor = select2?.$container || $select.next('.select2-container') || $select;
 
@@ -218,17 +257,50 @@ const init = () => {
     }
   });
 
-  // 2. 原生 select（单选与多选）触发拦截（排除已初始化 Select2 的元素）
+  // 1.1 直接拦截 .select2-container 的交互，保障触屏与点击即时响应
   $(targetDoc).on(
     `pointerdown.${EVENT_NAMESPACE} mousedown.${EVENT_NAMESPACE}`,
-    'select',
-    handleSelectTrigger,
+    '.select2-container',
+    function (e) {
+      if (!isTakeOverSelect2Enabled()) {
+        return;
+      }
+      if ($(e.target).closest('.select2-selection__choice__remove').length) {
+        return;
+      }
+
+      const $container = $(this);
+      const $select = $container.prev('select');
+      if (!$select.length || $select.is(':disabled') || Boolean($select.prop('disabled'))) {
+        return;
+      }
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const now = Date.now();
+      if (now - lastTriggerTime < 250) {
+        return;
+      }
+      lastTriggerTime = now;
+
+      const isActive = $select.hasClass(ACTIVE_CLASS);
+      closeDropdown();
+      if (!isActive) {
+        $container.find('input, textarea').trigger('blur');
+        openDropdown($select, $container);
+      }
+    },
   );
 
-  $(targetDoc).on(`click.${EVENT_NAMESPACE}`, 'select', function (e) {
+  // 2. 原生 select（单选与多选）触发拦截：pointerdown 唯一触发（无时间锁），mousedown 与 click 绝对拦截
+  $(targetDoc).on(`pointerdown.${EVENT_NAMESPACE}`, 'select', handleSelectTrigger);
+
+  $(targetDoc).on(`mousedown.${EVENT_NAMESPACE} click.${EVENT_NAMESPACE}`, 'select', function (e) {
     const $select = $(this);
     if (!$select.hasClass('select2-hidden-accessible') && !$select.data('select2')) {
       e.preventDefault();
+      e.stopPropagation();
     }
   });
 
@@ -292,7 +364,47 @@ const init = () => {
     closeDropdown();
   });
 
+  const scanAndEnhance = (root: Document | HTMLElement = targetDoc) => {
+    if (!isConvertMultiToSelect2Enabled()) return;
+    $(root)
+      .find('select[multiple]')
+      .each((_, el) => {
+        enhanceMultiSelect($(el));
+      });
+  };
+
+  scanAndEnhance(targetDoc);
+
+  const observer = new MutationObserver(mutations => {
+    if (!isConvertMultiToSelect2Enabled()) return;
+    for (const mutation of mutations) {
+      for (const node of Array.from(mutation.addedNodes)) {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          const el = node as HTMLElement;
+          if (el.tagName === 'SELECT' && (el as HTMLSelectElement).multiple) {
+            enhanceMultiSelect($(el));
+          } else {
+            $(el)
+              .find('select[multiple]')
+              .each((_, s) => {
+                enhanceMultiSelect($(s));
+              });
+          }
+        }
+      }
+    }
+  });
+
+  const observeTarget = targetDoc.body || targetDoc.documentElement;
+  if (observeTarget) {
+    observer.observe(observeTarget, {
+      childList: true,
+      subtree: true,
+    });
+  }
+
   $(window).on('pagehide', () => {
+    observer.disconnect();
     closeDropdown();
     $(`#${STYLE_ID}`).remove();
     $(targetDoc).off(`.${EVENT_NAMESPACE}`);
