@@ -222,6 +222,7 @@ const handleFileImport = async (e: Event) => {
 };
 
 const toggleExampleSearch = ref(false);
+const toggleExampleMultiple = ref(false);
 const toggleExampleSelect2 = ref(false);
 
 const exampleTexts = [
@@ -243,40 +244,42 @@ const currentExampleTexts = computed(() =>
   toggleExampleSearch.value ? exampleTexts : exampleTexts.slice(0, SEARCH_THRESHOLD - 1),
 );
 
-const exampleSelect2Ref = ref<HTMLSelectElement | null>(null);
+const exampleSelectRef = ref<HTMLSelectElement | null>(null);
 
 const initSelect2 = async () => {
   await nextTick();
-  if (!exampleSelect2Ref.value) return;
+  if (!exampleSelectRef.value) return;
+  destroySelect2();
   const el: JQuery<HTMLSelectElement> & { select2: ((...args: any) => any) | undefined } = $(
-    exampleSelect2Ref.value,
+    exampleSelectRef.value,
   ) as any;
   if (typeof el.select2 !== 'function') return;
   el.select2({ width: '100%' });
 };
 
 const destroySelect2 = () => {
-  if (!exampleSelect2Ref.value) return;
-  const el: JQuery<HTMLSelectElement> & { select2: ((...args: any) => any) | undefined } = $(
-    exampleSelect2Ref.value,
-  ) as any;
-  if (!el.data('select2') || typeof el.select2 !== 'function') return;
-  el.select2('destroy');
+  if (exampleSelectRef.value) {
+    const el: JQuery<HTMLSelectElement> & { select2: ((...args: any) => any) | undefined } = $(
+      exampleSelectRef.value,
+    ) as any;
+    if (typeof el.select2 === 'function' && el.data('select2')) {
+      el.select2('destroy');
+    }
+  }
+  $('#k3rn-dropdown_container .k3rn-example-select + .select2-container').remove();
 };
 
-watch(toggleExampleSelect2, val => {
-  if (val) {
-    initSelect2();
-  } else {
-    destroySelect2();
-  }
-});
-
-watch(currentExampleTexts, () => {
-  if (toggleExampleSelect2.value) {
-    initSelect2();
-  }
-});
+watch(
+  [toggleExampleSelect2, toggleExampleMultiple, currentExampleTexts],
+  async ([s2]) => {
+    if (s2) {
+      await initSelect2();
+    } else {
+      destroySelect2();
+    }
+  },
+  { flush: 'post' },
+);
 
 onBeforeUnmount(destroySelect2);
 </script>
@@ -294,18 +297,15 @@ onBeforeUnmount(destroySelect2);
               <h3>示例</h3>
             </div>
             <select
-              v-if="toggleExampleSelect2"
-              id="k3rn-example-select2"
-              ref="exampleSelect2Ref"
+              ref="exampleSelectRef"
               class="k3rn-example-select"
-              multiple
+              :multiple="toggleExampleMultiple"
             >
-              <option v-for="(value, index) in currentExampleTexts" :key="value" :selected="index === 0">
-                {{ value }}
-              </option>
-            </select>
-            <select v-else class="k3rn-example-select">
-              <option v-for="value in currentExampleTexts" :key="value">
+              <option
+                v-for="(value, index) in currentExampleTexts"
+                :key="value"
+                :selected="toggleExampleMultiple ? index === 0 : undefined"
+              >
                 {{ value }}
               </option>
             </select>
@@ -316,9 +316,15 @@ onBeforeUnmount(destroySelect2);
               </label>
             </div>
             <div class="flex-container">
+              <label class="checkbox_label" type="checkbox" title="多选（multiple）">
+                <input v-model="toggleExampleMultiple" type="checkbox" />
+                <span>多选</span>
+              </label>
+            </div>
+            <div class="flex-container">
               <label class="checkbox_label" type="checkbox" title="Select2">
                 <input v-model="toggleExampleSelect2" type="checkbox" />
-                <span>多选</span>
+                <span>Select2</span>
               </label>
             </div>
           </div>
