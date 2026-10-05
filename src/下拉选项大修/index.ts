@@ -2,7 +2,7 @@ import { debounce } from 'lodash';
 
 import { createScriptIdDiv, teleportStyle } from '@util/script';
 import {
-  ACTIVE_CLASS,
+  ACTIVE_ATTR,
   DROPDOWN_ID,
   EVENT_NAMESPACE,
   injectGlobalStyles,
@@ -50,9 +50,9 @@ const closeDropdown = () => {
   $(window).add(doc).add(document).find('*').off(`.${SCROLL_NAMESPACE}`);
   $(window).add(doc).add(document).off(`.${SCROLL_NAMESPACE}`);
 
-  const $active = $(doc).find(`.${ACTIVE_CLASS}`).add(`.${ACTIVE_CLASS}`);
+  const $active = $(doc).find(`[${ACTIVE_ATTR}]`).add(`[${ACTIVE_ATTR}]`);
   if ($active.length) {
-    $active.removeClass(ACTIVE_CLASS);
+    $active.removeAttr(ACTIVE_ATTR);
   }
 
   $(doc).find('select').off(`.${EVENT_NAMESPACE}-sync`);
@@ -69,12 +69,12 @@ const openDropdown = ($select: JQuery<HTMLElement>, $anchorInput?: JQuery<HTMLEl
   const $anchor = $anchorInput || select2?.$container || $select;
   const isMulti = Boolean($select.prop('multiple') || $select.is('[multiple]'));
 
-  $select.addClass(ACTIVE_CLASS);
-  $anchor.addClass(ACTIVE_CLASS);
+  $select.attr(ACTIVE_ATTR, 'true');
+  $anchor.attr(ACTIVE_ATTR, 'true');
 
   // 防抖延迟绑定 scroll，使用独立 SCROLL_NAMESPACE，防止在 DOM 挂载和 focus 时同步触发微小 scroll 导致误关
   setTimeout(() => {
-    if (!$select.hasClass(ACTIVE_CLASS)) return;
+    if (!$select.is(`[${ACTIVE_ATTR}]`)) return;
 
     const $parents = $anchor.parents().add(doc).add(window);
     $parents.on(`scroll.${SCROLL_NAMESPACE}`, (e: JQuery.TriggeredEvent) => {
@@ -197,7 +197,7 @@ const handleSelectTrigger = (e: JQuery.TriggeredEvent) => {
     e.stopPropagation();
     const select2 = $select.data('select2');
     const $anchor = select2?.$container || $select.next('.select2-container') || $select;
-    const isActive = $select.hasClass(ACTIVE_CLASS);
+    const isActive = $select.is(`[${ACTIVE_ATTR}]`);
     closeDropdown();
     if (!isActive) {
       $anchor.find('input, textarea').trigger('blur');
@@ -215,7 +215,7 @@ const handleSelectTrigger = (e: JQuery.TriggeredEvent) => {
   e.preventDefault();
   e.stopPropagation();
 
-  const isActive = $select.hasClass(ACTIVE_CLASS);
+  const isActive = $select.is(`[${ACTIVE_ATTR}]`);
   closeDropdown();
   if (!isActive) {
     $select.trigger('blur');
@@ -268,7 +268,7 @@ const init = () => {
     const select2 = $select.data('select2');
     const $anchor = select2?.$container || $select.next('.select2-container') || $select;
 
-    const isActive = $select.hasClass(ACTIVE_CLASS);
+    const isActive = $select.is(`[${ACTIVE_ATTR}]`);
     closeDropdown();
     if (!isActive) {
       // 触发失焦，隐藏 Select2 内部的闪烁光标
@@ -310,7 +310,7 @@ const init = () => {
     }
     lastTriggerTime = now;
 
-    const isActive = $select.hasClass(ACTIVE_CLASS);
+    const isActive = $select.is(`[${ACTIVE_ATTR}]`);
     closeDropdown();
     if (!isActive) {
       $container.find('input, textarea').trigger('blur');
@@ -338,7 +338,7 @@ const init = () => {
       }
       e.preventDefault();
       e.stopPropagation();
-      const isActive = $select.hasClass(ACTIVE_CLASS);
+      const isActive = $select.is(`[${ACTIVE_ATTR}]`);
       closeDropdown();
       if (!isActive) openDropdown($select, $select);
     }
@@ -354,7 +354,7 @@ const init = () => {
   // 5. 点击外部关闭逻辑（排除当前激活锚点与自定义浮层内部）
   $(targetDoc).on(`click.${EVENT_NAMESPACE}`, e => {
     const $target = $(e.target);
-    const $activeAnchor = $(targetDoc).find(`.${ACTIVE_CLASS}`);
+    const $activeAnchor = $(targetDoc).find(`[${ACTIVE_ATTR}]`);
     const nativeEvt = e.originalEvent as MouseEvent | undefined;
     const path = nativeEvt?.composedPath ? nativeEvt.composedPath() : [];
 
@@ -435,7 +435,7 @@ const init = () => {
     $(`#${STYLE_ID}`).remove();
     $(targetDoc).off(`.${EVENT_NAMESPACE}`);
     $(targetDoc).off(`.${SCROLL_NAMESPACE}`);
-    $(`.${ACTIVE_CLASS}`).removeClass(ACTIVE_CLASS);
+    $(`[${ACTIVE_ATTR}]`).removeAttr(ACTIVE_ATTR);
   });
 
   const app = createApp(view).use(createPinia());

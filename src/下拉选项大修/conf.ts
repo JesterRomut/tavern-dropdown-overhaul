@@ -1,4 +1,4 @@
-export const ACTIVE_CLASS = 'k3rn-dropdown-active';
+export const ACTIVE_ATTR = 'data-dropdown-active';
 export const DROPDOWN_ID = 'k3rn-dropdown-global';
 export const STYLE_ID = `k3rn-dropdown-overhaul`;
 export const EVENT_NAMESPACE = 'k3rn-dropdown-overhaul';
