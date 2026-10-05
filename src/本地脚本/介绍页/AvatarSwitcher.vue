@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CDNClient, fetchGitHub, getFastestHost, resetCDNContext } from '@util/cdn';
+import type { CDNClient, fetchGitHub, getAvailableHost, resetCDNContext } from '@util/cdn';
 import _, { debounce } from 'lodash';
 import { onUnmounted } from 'vue';
 import { vTooltip } from './tooltip';
@@ -8,7 +8,7 @@ const { path, cdn, manifest } = defineProps<{
   path: string;
   cdn: CDNClient<{
     fetchGitHub: typeof fetchGitHub;
-    getFastestHost: typeof getFastestHost;
+    getAvailableHost: typeof getAvailableHost;
     resetCDNContext: typeof resetCDNContext;
   }>;
   manifest: { repo: string; path: string };
@@ -64,14 +64,7 @@ const manifestError: Ref<string | null> = ref(null);
 const pendingAvatarIndex = ref<number | null>(null); // 当前弹出确认框的卡面索引
 const isApplying = ref(false); // 是否正在应用中
 let isUnmounted = false;
-// function getCdnUrls(repo: string, path: string) {
-//   return [
-//     `https://fastly.jsdelivr.net/gh/${repo}@main/${path}`,
-//     `https://gcore.jsdelivr.net/gh/${repo}@main/${path}`,
-//     `https://cdn.jsdelivr.net/gh/${repo}@main/${path}`,
-//     `https://testingcf.jsdelivr.net/gh/${repo}@main/${path}`,
-//   ];
-// }
+
 // 多源获取 Blob
 async function resolveFromRepo(repo: string, path: string): Promise<Blob | null> {
   try {
@@ -184,15 +177,8 @@ async function checkConnectivity() {
     online.value = false;
     return;
   }
-  cdn.resetCDNContext();
   try {
-    // const ver = await cdn.fetchLatestVersion(manifest.repo);
-    // // const host = await cdn.getFastestHost();
-    // online.value = ver !== null;
-
-    // console.log(ver);
-    // if (!ver) {
-    const host = await cdn.getFastestHost();
+    const host = await cdn.getAvailableHost();
     online.value = host !== null;
   } catch {
     online.value = false;
