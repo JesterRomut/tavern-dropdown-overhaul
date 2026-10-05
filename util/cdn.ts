@@ -75,7 +75,35 @@ export async function pingHost(host: string, timeout: number = 3000): Promise<st
 }
 
 /**
- * 获取当前最快的 CDN 镜像节点
+ * 顺序获取首个可用的 CDN 节点（优先复用已锁定的 Host，保障浏览器缓存稳定）
+ */
+export async function getAvailableHost(ctx: CDNContext): Promise<string | null> {
+  if (ctx.currentHost) return ctx.currentHost;
+  if (ctx.isInitializing) return ctx.isInitializing;
+
+  ctx.isInitializing = (async () => {
+    try {
+      for (const host of ctx.hosts) {
+        try {
+          await pingHost(host);
+          ctx.currentHost = host;
+          return host;
+        } catch {
+          // 当前 host 不可用，顺序探测下一个
+        }
+      }
+      ctx.currentHost = null;
+      return null;
+    } finally {
+      ctx.isInitializing = null;
+    }
+  })();
+
+  return ctx.isInitializing;
+}
+
+/**
+ * 获取当前最快的 CDN 镜像节点（并发测速）
  */
 export async function getFastestHost(ctx: CDNContext): Promise<string | null> {
   if (ctx.currentHost) return ctx.currentHost;
@@ -98,13 +126,25 @@ export async function getFastestHost(ctx: CDNContext): Promise<string | null> {
 }
 
 /**
- * 故障时切换节点
+ * 故障时顺序切换到下一个可用节点
  */
 export async function switchHost(ctx: CDNContext, failedHost?: string): Promise<string | null> {
-  if (failedHost && ctx.currentHost === failedHost) {
-    ctx.currentHost = null;
+  const current = failedHost ?? ctx.currentHost;
+  const currentIndex = current ? ctx.hosts.indexOf(current) : -1;
+  const candidateHosts = ctx.hosts.slice(currentIndex + 1);
+
+  for (const host of candidateHosts) {
+    try {
+      await pingHost(host);
+      ctx.currentHost = host;
+      return host;
+    } catch {
+      // 顺序探测下一个
+    }
   }
-  return getFastestHost(ctx);
+
+  ctx.currentHost = null;
+  return null;
 }
 
 /**
@@ -138,7 +178,7 @@ export async function fetchWithTimeout(url: string, options: RequestInit, timeou
 }
 
 /**
- * 独立请求：从 CDN 镜像拉取资源并自动在失败时故障转移
+ * 独立请求：从 CDN 镜像拉取资源并自动在失败时顺序故障转移
  */
 export async function fetchFromCdn(
   ctx: CDNContext,
@@ -148,23 +188,28 @@ export async function fetchFromCdn(
   const { timeout = 5000, ...fetchOptions } = options;
   const normalizedPath = pathAndRepo.startsWith('/') ? pathAndRepo : `/${pathAndRepo}`;
 
-  let host = await getFastestHost(ctx);
+  const host = ctx.currentHost || (await getAvailableHost(ctx));
   if (!host) {
     throw new Error('[OZ-CDNManager] 没有可用的节点，可能已离线');
   }
 
-  try {
-    return await fetchWithTimeout(`${host}${normalizedPath}`, fetchOptions, timeout);
-  } catch (err) {
-    console.warn(`[OZ-CDNManager] 节点 ${host} 不可用，正在启动后备隐藏节点`);
+  const startIndex = Math.max(0, ctx.hosts.indexOf(host));
+  const candidateHosts = ctx.hosts.slice(startIndex);
 
-    host = await switchHost(ctx, host);
-    if (!host) {
-      throw new Error('[OZ-CDNManager] 所有后备隐藏节点不可用', { cause: err });
+  let lastError: unknown;
+  for (const candidate of candidateHosts) {
+    try {
+      const resp = await fetchWithTimeout(`${candidate}${normalizedPath}`, fetchOptions, timeout);
+      ctx.currentHost = candidate;
+      return resp;
+    } catch (err) {
+      console.warn(`[OZ-CDNManager] 节点 ${candidate} 不可用，正在尝试后备节点`);
+      lastError = err;
     }
-
-    return await fetchWithTimeout(`${host}${normalizedPath}`, fetchOptions, timeout);
   }
+
+  ctx.currentHost = null;
+  throw new Error('[OZ-CDNManager] 所有后备节点不可用', { cause: lastError });
 }
 
 /**
