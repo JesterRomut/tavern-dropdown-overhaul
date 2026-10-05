@@ -31,9 +31,6 @@
 
 **手动更新角色卡指南：如果自动更新脚本不可用**
 
-  1. 删除/解绑并改名当前角色卡世界书
-  2. 角色卡 → 更多... → 替换/更新 → 从URL替换
-  3. 填入 `https://raw.githubusercontent.com/JesterRomut/tavern-resources/refs/heads/main/character/OZ/OZ.png`
-
-  备用链接（需要将对应域名添加至`config.yaml`中`whitelistImportDomains`）：
-    `https://github.com/JesterRomut/tavern-resources/blob/main/character/OZ/OZ.png?raw=true`
+  1. 前往 `kernschmelze.cc` 下载角色卡
+  2. 删除/解绑并改名当前角色卡世界书
+  3. 角色卡 → 更多... → 替换/更新 → 从文件替换

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { createCDN, fetchGitHub, getFastestHost, resetCDNContext } from '@util/cdn';
+import { createCDN, fetchGitHub, getAvailableHost, resetCDNContext } from '@util/cdn';
 import AvatarSwitcher from '../AvatarSwitcher.vue';
 import InfoSwipe from '../InfoSwipe.vue';
 import StartsBrowser from '../StartsBrowser.vue';
@@ -10,7 +10,7 @@ import { useParentTheme, withCodeFont, withTypography } from '../theme';
 import { format, splitPages } from '../util';
 import about1 from './about.md';
 
-const cdn = createCDN({ fetchGitHub, getFastestHost, resetCDNContext });
+const cdn = createCDN({ fetchGitHub, getAvailableHost, resetCDNContext });
 
 useParentTheme([withTypography(), withCodeFont()]);
 </script>

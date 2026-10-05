@@ -1,10 +1,10 @@
-import { createCDN, fetchGitHub, fetchLatestRepoTag, getFastestHost, getGitHubCdnUrl } from '@util/cdn';
+import { createCDN, fetchGitHub, fetchLatestRepoTag, getAvailableHost, getGitHubCdnUrl } from '@util/cdn';
 
-const cdn = createCDN({ fetchGitHub, fetchLatestRepoTag, getFastestHost });
+const cdn = createCDN({ fetchGitHub, fetchLatestRepoTag, getAvailableHost });
 
 export async function loadScript(repo: string, path: string, pathReadme: string, name = '脚本加载器') {
   try {
-    const [tagRes, hostRes] = await Promise.all([cdn.fetchLatestRepoTag(repo), cdn.getFastestHost()]);
+    const [tagRes, hostRes] = await Promise.all([cdn.fetchLatestRepoTag(repo), cdn.getAvailableHost()]);
     const tag = tagRes || 'latest';
     const host = hostRes || undefined;
     const scriptUrl = getGitHubCdnUrl(repo, path, tag, host);
