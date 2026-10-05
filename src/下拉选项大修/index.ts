@@ -157,14 +157,29 @@ const openDropdown = ($select: JQuery<HTMLElement>, $anchorInput?: JQuery<HTMLEl
   }, 10);
 };
 
-const enhanceMultiSelect = ($select: JQuery<HTMLElement>): boolean => {
+const isConvertibleMultiSelect = ($select: JQuery<HTMLElement>): boolean => {
   if (!isConvertMultiToSelect2Enabled()) return false;
   if ($select.hasClass('select2-hidden-accessible') || Boolean($select.data('select2'))) return false;
   if (typeof ($select as any).select2 !== 'function') return false;
-  if ($select.is(':hidden')) return false;
 
   const isMulti = Boolean($select.prop('multiple') || $select.is('[multiple]'));
   if (!isMulti) return false;
+
+  // 排除模板内部的蓝图元素（避免污染模板克隆源）
+  if ($select.closest('template, .template_element').length) return false;
+
+  // 排除带有同级 textarea 伴生输入框的自由文本/标签型输入（如世界书主要关键字、可选过滤器）
+  if ($select.siblings('textarea').length) return false;
+
+  // 排除自身内联样式显式隐藏的元素（酒馆移动端通过 display: none 显式禁用的 select）
+  const rawEl = $select[0];
+  if (rawEl && rawEl.style.display === 'none') return false;
+
+  return true;
+};
+
+const enhanceMultiSelect = ($select: JQuery<HTMLElement>): boolean => {
+  if (!isConvertibleMultiSelect($select)) return false;
 
   const placeholder = $select.attr('placeholder') || $select.attr('data-i18n') || '点击选择...';
 
@@ -393,6 +408,7 @@ const init = () => {
     if (!isConvertMultiToSelect2Enabled()) return;
     $(root)
       .find('select[multiple]')
+      .addBack('select[multiple]')
       .each((_, el) => {
         enhanceMultiSelect($(el));
       });
@@ -405,16 +421,7 @@ const init = () => {
     for (const mutation of mutations) {
       for (const node of Array.from(mutation.addedNodes)) {
         if (node.nodeType === Node.ELEMENT_NODE) {
-          const el = node as HTMLElement;
-          if (el.tagName === 'SELECT' && (el as HTMLSelectElement).multiple) {
-            enhanceMultiSelect($(el));
-          } else {
-            $(el)
-              .find('select[multiple]')
-              .each((_, s) => {
-                enhanceMultiSelect($(s));
-              });
-          }
+          scanAndEnhance(node as HTMLElement);
         }
       }
     }
