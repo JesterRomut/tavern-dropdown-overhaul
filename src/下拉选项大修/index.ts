@@ -11,6 +11,7 @@ import {
   SCROLL_NAMESPACE,
   SEARCH_THRESHOLD,
   STYLE_ID,
+  useConfigStore,
 } from './conf';
 import view from './conf_view.vue';
 import { buildDropdownOptions } from './options';
@@ -29,6 +30,18 @@ export const getTargetDoc = (): Document => {
 
 // 匹配所有 Select2 的底层原生 select 元素
 const SELECT2_SELECTOR = 'select';
+
+const revertAutoMultiSelects = (root: Document | HTMLElement = getTargetDoc()) => {
+  $(root)
+    .find('select[data-auto-select2]')
+    .each((_, el) => {
+      const $el = $(el);
+      if ($el.data('select2')) {
+        ($el as any).select2('destroy');
+      }
+      $el.removeAttr('data-auto-select2');
+    });
+};
 
 const closeDropdown = () => {
   const doc = getTargetDoc();
@@ -148,6 +161,7 @@ const enhanceMultiSelect = ($select: JQuery<HTMLElement>): boolean => {
   if (!isConvertMultiToSelect2Enabled()) return false;
   if ($select.hasClass('select2-hidden-accessible') || Boolean($select.data('select2'))) return false;
   if (typeof ($select as any).select2 !== 'function') return false;
+  if ($select.is(':hidden')) return false;
 
   const isMulti = Boolean($select.prop('multiple') || $select.is('[multiple]'));
   if (!isMulti) return false;
@@ -155,6 +169,7 @@ const enhanceMultiSelect = ($select: JQuery<HTMLElement>): boolean => {
   const placeholder = $select.attr('placeholder') || $select.attr('data-i18n') || '点击选择...';
 
   const $dialog = $select.closest('dialog');
+  $select.attr('data-auto-select2', 'true');
   ($select as any).select2({
     width: '100%',
     placeholder,
@@ -416,6 +431,7 @@ const init = () => {
   $(window).on('pagehide', () => {
     observer.disconnect();
     closeDropdown();
+    revertAutoMultiSelects(targetDoc);
     $(`#${STYLE_ID}`).remove();
     $(targetDoc).off(`.${EVENT_NAMESPACE}`);
     $(targetDoc).off(`.${SCROLL_NAMESPACE}`);
@@ -425,6 +441,18 @@ const init = () => {
   const app = createApp(view).use(createPinia());
   const $app = createScriptIdDiv().appendTo('#extensions_settings2');
   app.mount($app[0]);
+
+  const store = useConfigStore();
+  watch(
+    () => store.settings.convertMultiToSelect2,
+    enabled => {
+      if (!enabled) {
+        revertAutoMultiSelects(targetDoc);
+      } else {
+        scanAndEnhance(targetDoc);
+      }
+    },
+  );
 
   const { destroy } = teleportStyle();
 
