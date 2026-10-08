@@ -1,6 +1,6 @@
 import { teleportStyle } from '@util/script';
 import comp from './comp.vue';
-import { type SwitchGroup, type SwitcherConfig } from './type';
+import { type SwitchGroup, type SwitcherConfig } from './type.js';
 
 const scriptId = getScriptId();
 
