@@ -9,12 +9,17 @@ export const vLabel: Directive<HTMLElement, GroupLabel> = (el, binding) => {
 
   if (typeof val === 'string') {
     el.innerHTML = val;
-  } else if ('jquery' in (val as any)) {
-    $(el).append(val as JQuery);
+  } else if (typeof val === 'object' && 'jquery' in val) {
+    const doc = el.ownerDocument || document;
+    for (const node of (val as JQuery).toArray()) {
+      el.appendChild(doc.importNode(node, true));
+    }
   } else if (val instanceof Node) {
-    el.appendChild(val);
+    const doc = el.ownerDocument || document;
+    el.appendChild(doc.importNode(val, true));
   }
 };
+
 
 export const ScriptVariables = z
   .object({

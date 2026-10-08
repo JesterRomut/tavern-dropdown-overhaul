@@ -24,6 +24,8 @@ const target_ids = computed(() => {
 });
 
 const disabledGroups = ref<SwitchGroup[]>([]);
+const hasHadDisabled = ref(false);
+const isCompleted = ref(false);
 let switcher: WorldbookSwitcherAPI | null = null;
 
 async function getSwitcher(): Promise<WorldbookSwitcherAPI | null> {
@@ -45,6 +47,14 @@ async function checkDisabledGroups() {
       list.push(group);
     }
   }
+
+  if (list.length > 0) {
+    hasHadDisabled.value = true;
+    isCompleted.value = false;
+  } else if (hasHadDisabled.value) {
+    isCompleted.value = true;
+  }
+
   disabledGroups.value = list;
 }
 
@@ -72,23 +82,86 @@ onMounted(async () => {
 <template>
   <main v-if="disabledGroups.length > 0">
     <div>
-      <i class="fa-solid fa-circle-exclamation"></i>
-      <span>相关世界书设定未开启：</span>
+      <h1>
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>相关世界书分组未开启</span>
+      </h1>
     </div>
     <div>
-      <div v-for="group in disabledGroups" :key="group.id">
-        <div v-label="group.label" class="group-info"></div>
-        <button class="enable-btn" title="点击开启此分组" @click="handleEnable(group)">
-          <i class="fa-solid fa-toggle-off"></i>
-          <span>开启</span>
-        </button>
-      </div>
+      <ul>
+        <li v-for="group in disabledGroups" :key="group.id">
+          <div v-label="group.label"></div>
+          <button class="enable-btn" title="点击开启此分组" @click="handleEnable(group)">
+            <i class="fa-solid fa-circle-plus"></i>
+          </button>
+        </li>
+      </ul>
     </div>
   </main>
+  <main v-else-if="isCompleted">
+    <div>
+      <h1><i class="fa-solid fa-circle-check"></i> <span>相关世界书分组已开启</span></h1>
+    </div>
+  </main>
+  <div v-else class="placeholder"></div>
 </template>
 
-<style lang="scss" scoped>
+<style lang="scss">
 main {
-  color: var(--SmartThemeBodyColor);
+  color: var(--theme-body-color);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  > div {
+    display: flex;
+    justify-content: center;
+  }
+
+  font-size: var(--theme-font-size);
+  font-family: var(--theme-font-family);
+  letter-spacing: var(--theme-letter-spacing);
+  font-weight: var(--theme-font-weight);
+}
+
+h1 {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+  // background-color: var(--theme-body-color);
+  // color: color(from var(--theme-blur-tint-color) srgb r g b / 1);
+  // border-radius: 9999rem;
+  // padding-inline: 0.5rem;
+  // padding-block: 0.25rem;
+}
+
+ul {
+  margin-block: 0.75rem;
+}
+ul li {
+  display: flex;
+  background: var(--theme-blur-tint-color);
+  padding-inline: 2rem;
+  padding-block: 1rem;
+  border-radius: 9999rem;
+  box-shadow: 0px 0px 0.5rem 0px color-mix(in oklab, contrast-color(var(--theme-blur-tint-color)) 20%, transparent);
+
+  transition: 0.2s;
+  &:has(button:hover) {
+    background-color: var(--theme-body-color);
+    color: color(from var(--theme-blur-tint-color) srgb r g b / 1);
+
+    small {
+      color: color(from var(--theme-blur-tint-color) srgb r g b / 0.7);
+    }
+  }
+}
+
+small {
+  color: var(--theme-em-color);
+}
+
+.placeholder {
+  height: 1px;
 }
 </style>
