@@ -1,13 +1,8 @@
-//import { createMemoryHistory, createRouter } from 'vue-router';
+import { createApp } from 'vue';
 import Page from './page.vue';
-// const router = createRouter({
-//   history: createMemoryHistory(),
-//   routes: [
-//     { path: '/', component: Page },
-//   ],
-// });
-// router.replace('/日记');
 
 $(() => {
-  createApp(Page).mount('#app');
+  const app = createApp(Page).use(createPinia());
+  app.mount('#app');
+  $(window).on('pagehide', () => app.unmount());
 });
