@@ -69,4 +69,3 @@ table.wi-card-entry {
   }
 }
 </style>
-
