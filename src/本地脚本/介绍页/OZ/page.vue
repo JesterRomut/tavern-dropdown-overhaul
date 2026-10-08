@@ -5,8 +5,8 @@ import InfoSwipe from '../InfoSwipe.vue';
 import StartsBrowser from '../StartsBrowser.vue';
 import { vTooltip } from '../tooltip';
 
+import { useParentTheme, withCodeFont, withTypography } from '@util/theme';
 import { starts } from '../starts';
-import { useParentTheme, withCodeFont, withTypography } from '../theme';
 import { format, splitPages } from '../util';
 import about1 from './about1.md';
 
