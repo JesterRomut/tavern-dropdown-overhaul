@@ -4,18 +4,25 @@ import { type SwitchGroup, type WorldbookSwitcherAPI, vLabel } from '../世界�
 
 useParentTheme([withColors(), withTypography()]);
 
-const chat_message = getChatMessages(getCurrentMessageId())[0];
+const target_ids = computed(() => {
+  try {
+    const message = getChatMessages(getCurrentMessageId())[0]?.message ?? '';
+    const regex = /<WorldGroupRequire\s+[^>]*?id=["']([^"']+)["'][^>]*?\/?>/gi;
+    const ids: string[] = [];
+    for (const match of message.matchAll(regex)) {
+      if (match[1]) {
+        for (const item of match[1].split(',')) {
+          const trimmed = item.trim();
+          if (trimmed) ids.push(trimmed);
+        }
+      }
+    }
+    return ids;
+  } catch {
+    return [];
+  }
+});
 
-const match = chat_message.message.match(/<WorldGroupRequire ?id="(.*?)" ?\/>/g);
-
-if (!match) throw new Error('未匹配到世界书分组ID');
-
-const target_ids = computed(() =>
-  match[0]
-    .split(',')
-    .map(s => s.trim())
-    .filter(Boolean),
-);
 
 const disabledGroups = ref<SwitchGroup[]>([]);
 let switcher: WorldbookSwitcherAPI | null = null;
@@ -47,7 +54,14 @@ onMounted(async () => {
   eventOn(tavern_events.WORLDINFO_UPDATED, () => {
     checkDisabledGroups();
   });
+
+  eventOn(tavern_events.MESSAGE_UPDATED, id => {
+    if (id === getCurrentMessageId()) {
+      checkDisabledGroups();
+    }
+  });
 });
+
 </script>
 
 <template>
