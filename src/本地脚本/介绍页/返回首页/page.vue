@@ -21,11 +21,6 @@ main {
   justify-content: center;
 
   user-select: none;
-  -moz-user-select: none;
-  -khtml-user-select: none;
-  -webkit-user-select: none;
-  -o-user-select: none;
-
   div {
     display: flex;
     align-items: center;
