@@ -1,4 +1,20 @@
+import { type Directive } from 'vue';
+
 export type GroupLabel = string | HTMLElement | JQuery | (() => string | HTMLElement | JQuery);
+
+export const vLabel: Directive<HTMLElement, GroupLabel> = (el, binding) => {
+  el.replaceChildren();
+  const val = typeof binding.value === 'function' ? binding.value() : binding.value;
+  if (!val) return;
+
+  if (typeof val === 'string') {
+    el.innerHTML = val;
+  } else if ('jquery' in (val as any)) {
+    $(el).append(val as JQuery);
+  } else if (val instanceof Node) {
+    el.appendChild(val);
+  }
+};
 
 export const ScriptVariables = z
   .object({
@@ -23,4 +39,13 @@ export interface SwitchGroup {
 
 export interface SwitcherConfig {
   groups: SwitchGroup[];
+}
+
+export interface WorldbookSwitcherAPI {
+  groups: SwitchGroup[];
+  worldbookName: string;
+  getGroup(id: string): SwitchGroup | undefined;
+  isGroupEnabled(groupId: string): Promise<boolean>;
+  toggleGroup(groupId: string, target?: boolean): Promise<void>;
+  exportGroup(groupId: string): Promise<void>;
 }

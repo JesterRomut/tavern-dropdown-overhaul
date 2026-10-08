@@ -1,13 +1,98 @@
 import { teleportStyle } from '@util/script';
 import comp from './comp.vue';
-import { type SwitchGroup, type SwitcherConfig } from './type.js';
+import {
+  type SwitchGroup,
+  type SwitcherConfig,
+  type WorldbookSwitcherAPI,
+  ScriptVariables,
+} from './type';
 
 const scriptId = getScriptId();
 
-function injectUI(groups: SwitchGroup[], worldbookName: string) {
+function isMatch(name: string, matcher: SwitchGroup['match']): boolean {
+  if (typeof matcher === 'function') return matcher(name);
+  if (matcher.global) matcher.lastIndex = 0;
+  return matcher.test(name);
+}
+
+async function isGroupEnabled(group: SwitchGroup, worldbookName: string): Promise<boolean> {
+  const worldbook = await getWorldbook(worldbookName);
+  const matchedEntries = worldbook.filter(entry => isMatch(entry.name, group.match));
+  return matchedEntries.some(entry => entry.enabled);
+}
+
+async function toggleGroup(
+  group: SwitchGroup,
+  worldbookName: string,
+  target?: boolean,
+): Promise<void> {
+  await updateWorldbookWith(
+    worldbookName,
+    entries => {
+      const matched = entries.filter(entry => isMatch(entry.name, group.match));
+      const current = matched.some(entry => entry.enabled);
+      const next = target !== undefined ? target : !current;
+
+      if (!next) {
+        if (matched.some(e => e.enabled)) {
+          const previouslyDisabled = matched.filter(e => !e.enabled).map(e => e.name);
+          updateVariablesWith(
+            rawVars => {
+              const vars = ScriptVariables.parse(rawVars || {});
+              vars.previouslyDisabled[group.id] = previouslyDisabled;
+              return vars;
+            },
+            { type: 'script' },
+          );
+        }
+      }
+
+      const vars = !next ? null : ScriptVariables.parse(getVariables({ type: 'script' }) || {});
+      const disabledSet = new Set(vars?.previouslyDisabled[group.id] || []);
+      const shouldApplyFilter = next && disabledSet.size > 0;
+
+      for (const entry of entries) {
+        if (isMatch(entry.name, group.match)) {
+          entry.enabled = next ? !shouldApplyFilter || !disabledSet.has(entry.name) : false;
+        }
+      }
+      return entries;
+    },
+    { render: 'immediate' },
+  );
+}
+
+async function exportGroup(group: SwitchGroup, worldbookName: string) {
+  if (!group.export) return;
+
+  const targetName = group.export.name;
+  const message = `将导出为「${targetName}」，如有同名世界书会覆盖，是否确定导出？`;
+
+  const result = await SillyTavern.callGenericPopup(message, SillyTavern.POPUP_TYPE.CONFIRM, '', {
+    okButton: '确定',
+    cancelButton: '取消',
+  });
+
+  if (result !== SillyTavern.POPUP_RESULT.AFFIRMATIVE && result !== 1 && result !== true) {
+    return;
+  }
+
+  const worldbook = await getWorldbook(worldbookName);
+  const matchedEntries = worldbook.filter(entry => isMatch(entry.name, group.match));
+
+  if (matchedEntries.length === 0) {
+    toastr.warning(`未找到匹配的条目`);
+    return;
+  }
+
+  await createOrReplaceWorldbook(targetName, klona(matchedEntries), { render: 'immediate' });
+  toastr.success(`已成功导出世界书「${targetName}」`);
+}
+
+function injectUI(api: WorldbookSwitcherAPI) {
   if ($(`#${scriptId}`).length) return;
 
-  const app = createApp(comp, { groups, worldbookName }).use(createPinia());
+  const app = createApp(comp, { api }).use(createPinia());
   const $app = $('<div>').attr('id', scriptId).attr('class', 'wide100p');
 
   function mount(): boolean {
@@ -78,5 +163,31 @@ export async function init(conf: SwitcherConfig) {
   const { worldbook: worldbookName } = char;
   if (!worldbookName) return;
 
-  injectUI(conf.groups, worldbookName);
+  const groupMap = new Map(conf.groups.map(g => [g.id, g]));
+
+  const api: WorldbookSwitcherAPI = {
+    groups: conf.groups,
+    worldbookName,
+    getGroup: (id: string) => groupMap.get(id),
+    isGroupEnabled: async (groupId: string) => {
+      const group = groupMap.get(groupId);
+      if (!group) return false;
+      return isGroupEnabled(group, worldbookName);
+    },
+    toggleGroup: async (groupId: string, target?: boolean) => {
+      const group = groupMap.get(groupId);
+      if (!group) return;
+      return toggleGroup(group, worldbookName, target);
+    },
+    exportGroup: async (groupId: string) => {
+      const group = groupMap.get(groupId);
+      if (!group) return;
+      return exportGroup(group, worldbookName);
+    },
+  };
+
+  initializeGlobal('WorldbookSwitcher', api);
+
+  injectUI(api);
 }
+
