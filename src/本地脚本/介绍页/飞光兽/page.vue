@@ -5,8 +5,8 @@ import InfoSwipe from '../InfoSwipe.vue';
 import StartsBrowser from '../StartsBrowser.vue';
 import { vTooltip } from '../tooltip';
 
+import { useParentTheme, withCodeFont, withTypography } from '@util/theme';
 import { starts } from '../starts';
-import { useParentTheme, withCodeFont, withTypography } from '../theme';
 import { format, splitPages } from '../util';
 import about1 from './about.md';
 
@@ -43,8 +43,8 @@ export default {
 </script>
 <style lang="scss">
 @use '../common.scss';
-@import url("https://fontsapi.zeoseven.com/236/main/result.css");
-@import url("https://fontsapi.zeoseven.com/820/main/result.css");
+@import url('https://fontsapi.zeoseven.com/236/main/result.css');
+@import url('https://fontsapi.zeoseven.com/820/main/result.css');
 :root {
   --oz-highlight: rgb(177, 50, 75);
 }
@@ -73,13 +73,13 @@ main {
   }
 
   > footer h1 {
-    font-family: "峄山碑篆体";
+    font-family: '峄山碑篆体';
     font-weight: normal;
     font-size: 1.6rem;
   }
 
   > footer h2 {
-    font-family: "Chong Xi Small Seal";
+    font-family: 'Chong Xi Small Seal';
     font-weight: lighter;
     font-size: 0.9rem;
     text-transform: uppercase;

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useParentTheme, withColors, withTypography } from '../theme';
+import { useParentTheme, withColors, withTypography } from '@util/theme';
 import { changeGreeting } from '../util';
 
 useParentTheme([withColors(), withTypography()]);
