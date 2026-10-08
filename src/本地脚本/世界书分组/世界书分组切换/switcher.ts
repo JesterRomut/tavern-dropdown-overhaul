@@ -1,11 +1,6 @@
 import { teleportStyle } from '@util/script';
 import comp from './comp.vue';
-import {
-  type SwitchGroup,
-  type SwitcherConfig,
-  type WorldbookSwitcherAPI,
-  ScriptVariables,
-} from './type';
+import { type SwitchGroup, type SwitcherConfig, type WorldbookSwitcherAPI, ScriptVariables } from './type';
 
 const scriptId = getScriptId();
 
@@ -21,11 +16,7 @@ async function isGroupEnabled(group: SwitchGroup, worldbookName: string): Promis
   return matchedEntries.some(entry => entry.enabled);
 }
 
-async function toggleGroup(
-  group: SwitchGroup,
-  worldbookName: string,
-  target?: boolean,
-): Promise<void> {
+async function toggleGroup(group: SwitchGroup, worldbookName: string, target?: boolean): Promise<void> {
   await updateWorldbookWith(
     worldbookName,
     entries => {
@@ -190,4 +181,3 @@ export async function init(conf: SwitcherConfig) {
 
   injectUI(api);
 }
-
