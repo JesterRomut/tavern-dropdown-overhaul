@@ -63,7 +63,11 @@ function onTouchEnd(e: TouchEvent) {
   <div class="swipe-root" @touchstart.passive="onTouchStart" @touchend.passive="onTouchEnd">
     <div class="swipe-viewport">
       <Transition :name="direction === 'right' ? 'slide-left' : 'slide-right'" mode="out-in">
-        <div :key="currentIndex" class="swipe-page" v-html="pages[currentIndex]"></div>
+        <div :key="currentIndex" class="swipe-page">
+          <slot :name="`page-${currentIndex}`" :content="pages[currentIndex]" :index="currentIndex">
+            <div v-html="pages[currentIndex]"></div>
+          </slot>
+        </div>
       </Transition>
     </div>
 
@@ -94,99 +98,99 @@ function onTouchEnd(e: TouchEvent) {
   flex-direction: column;
   padding: 0.6rem var(--section-padding, 0.5rem);
   user-select: text;
+}
 
-  .swipe-viewport {
-    position: relative;
-    overflow: hidden;
+.swipe-viewport {
+  position: relative;
+  overflow: hidden;
 
-    .swipe-page {
-      width: 100%;
-      line-height: 1.6;
+  .swipe-page {
+    width: 100%;
+    line-height: 1.6;
 
-      :deep(p) {
-        margin: 0.5rem 0;
+    :deep(p) {
+      margin: 0.5rem 0;
+    }
+
+    :deep(ol) {
+      list-style-type: decimal;
+      padding-left: 1.5rem;
+      margin: 0.5rem 0;
+
+      li {
+        margin: 0.25rem 0;
       }
+    }
 
-      :deep(ol) {
-        list-style-type: decimal;
-        padding-left: 1.5rem;
-        margin: 0.5rem 0;
+    :deep(ul) {
+      list-style-type: disc;
+      padding-left: 1.5rem;
+      margin: 0.5rem 0;
 
-        li {
-          margin: 0.25rem 0;
-        }
+      li {
+        margin: 0.25rem 0;
       }
+    }
 
-      :deep(ul) {
-        list-style-type: disc;
-        padding-left: 1.5rem;
-        margin: 0.5rem 0;
+    :deep(code) {
+      background-color: black;
+      padding: 0.1rem 0.3rem;
+      border-radius: 3px;
+    }
 
-        li {
-          margin: 0.25rem 0;
-        }
-      }
+    :deep(a) {
+      color: var(--oz-highlight, mediumpurple);
+      text-decoration: underline;
+      word-break: break-all;
+    }
+  }
+}
 
-      :deep(code) {
-        background-color: black;
-        padding: 0.1rem 0.3rem;
-        border-radius: 3px;
-      }
+.swipe-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+  user-select: none;
 
-      :deep(a) {
-        color: var(--oz-highlight, mediumpurple);
-        text-decoration: underline;
-        word-break: break-all;
-      }
+  .nav-btn {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.4);
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: all 0.2s ease;
+
+    &:hover {
+      color: var(--oz-highlight, #fff);
+      background: rgba(255, 255, 255, 0.1);
     }
   }
 
-  .swipe-controls {
+  .dots {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 0.6rem;
-    margin-top: 0.5rem;
-    user-select: none;
+    gap: 0.35rem;
 
-    .nav-btn {
-      background: transparent;
-      border: none;
-      color: rgba(255, 255, 255, 0.4);
-      padding: 0.2rem 0.4rem;
-      border-radius: 4px;
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.25);
       cursor: pointer;
-      font-size: 0.75rem;
-      transition: all 0.2s ease;
+      transition: all 0.25s ease;
 
       &:hover {
-        color: var(--oz-highlight, #fff);
-        background: rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.5);
       }
-    }
 
-    .dots {
-      display: flex;
-      align-items: center;
-      gap: 0.35rem;
-
-      .dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.25);
-        cursor: pointer;
-        transition: all 0.25s ease;
-
-        &:hover {
-          background: rgba(255, 255, 255, 0.5);
-        }
-
-        &.active {
-          width: 14px;
-          border-radius: 3px;
-          background: var(--oz-highlight, mediumpurple);
-        }
+      &.active {
+        width: 14px;
+        border-radius: 3px;
+        background: var(--oz-highlight, mediumpurple);
       }
     }
   }
