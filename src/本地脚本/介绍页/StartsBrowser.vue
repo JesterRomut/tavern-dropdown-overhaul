@@ -244,7 +244,7 @@ export default {
   },
 };
 </script>
-<style scoped lang="scss">
+<style lang="scss">
 /* 搜索栏样式 */
 .search-bar {
   display: flex;

@@ -33,6 +33,7 @@ interface TooltipHandlers {
   onTouchStart: (e: TouchEvent) => void;
   onTouchMove: (e: TouchEvent) => void;
   onTouchEnd: () => void;
+  onContextMenu: (e: MouseEvent) => void;
 }
 
 interface TooltipElement extends HTMLElement {
@@ -183,8 +184,7 @@ export const vTooltip: ObjectDirective<TooltipElement, TooltipContent> = {
   mounted(el: TooltipElement, binding: DirectiveBinding<TooltipContent>) {
     ensureMounted();
 
-    let touchStartX = 0;
-    let touchStartY = 0;
+    let isTouching = false;
 
     const updatePosition = (clientX: number, clientY: number) => {
       state.x = clientX;
@@ -232,42 +232,28 @@ export const vTooltip: ObjectDirective<TooltipElement, TooltipContent> = {
     const onTouchStart = (e: TouchEvent) => {
       const touch = e.touches[0];
       if (!touch) return;
-      if (el._timerId) {
-        clearTimeout(el._timerId);
-        el._timerId = undefined;
-      }
-      touchStartX = touch.clientX;
-      touchStartY = touch.clientY;
+      isTouching = true;
       updatePosition(touch.clientX, touch.clientY);
-      el._timerId = window.setTimeout(() => {
-        if (binding.value) {
-          showTooltip(state.x, state.y);
-        }
-        el._timerId = undefined;
-      }, SHOW_DELAY);
     };
 
     const onTouchMove = (e: TouchEvent) => {
+      if (!state.show) return;
       const touch = e.touches[0];
-      if (!touch) return;
-      if (state.show) {
+      if (touch) {
         updatePosition(touch.clientX, touch.clientY);
-      } else if (el._timerId) {
-        const dist = Math.hypot(touch.clientX - touchStartX, touch.clientY - touchStartY);
-        if (dist > 10) {
-          clearTimeout(el._timerId);
-          el._timerId = undefined;
-        } else {
-          updatePosition(touch.clientX, touch.clientY);
-        }
       }
     };
 
+    const onContextMenu = (e: MouseEvent) => {
+      if (!isTouching) return;
+      e.preventDefault();
+      const clientX = e.clientX || state.x;
+      const clientY = e.clientY || state.y;
+      showTooltip(clientX, clientY);
+    };
+
     const onTouchEnd = () => {
-      if (el._timerId) {
-        clearTimeout(el._timerId);
-        el._timerId = undefined;
-      }
+      isTouching = false;
       hideTooltip();
     };
 
@@ -278,6 +264,7 @@ export const vTooltip: ObjectDirective<TooltipElement, TooltipContent> = {
       onTouchStart,
       onTouchMove,
       onTouchEnd,
+      onContextMenu,
     };
 
     el.addEventListener('mouseenter', onMouseEnter);
@@ -288,6 +275,7 @@ export const vTooltip: ObjectDirective<TooltipElement, TooltipContent> = {
     el.addEventListener('touchmove', onTouchMove, { passive: true });
     el.addEventListener('touchend', onTouchEnd);
     el.addEventListener('touchcancel', onTouchEnd);
+    el.addEventListener('contextmenu', onContextMenu);
   },
 
   updated(el: TooltipElement, binding: DirectiveBinding<TooltipContent>) {
@@ -312,6 +300,7 @@ export const vTooltip: ObjectDirective<TooltipElement, TooltipContent> = {
       el.removeEventListener('touchmove', handlers.onTouchMove);
       el.removeEventListener('touchend', handlers.onTouchEnd);
       el.removeEventListener('touchcancel', handlers.onTouchEnd);
+      el.removeEventListener('contextmenu', handlers.onContextMenu);
 
       delete el._tooltipHandlers;
     }
