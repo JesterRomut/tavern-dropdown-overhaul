@@ -246,7 +246,6 @@ export const vTooltip: ObjectDirective<TooltipElement, TooltipContent> = {
 
     const onContextMenu = (e: MouseEvent) => {
       if (!isTouching) return;
-      e.preventDefault();
       const clientX = e.clientX || state.x;
       const clientY = e.clientY || state.y;
       showTooltip(clientX, clientY);
