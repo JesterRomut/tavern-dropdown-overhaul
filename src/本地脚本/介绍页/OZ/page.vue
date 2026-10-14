@@ -8,7 +8,7 @@ import { vTooltip } from '../tooltip';
 import { useParentTheme, withCodeFont, withTypography } from '@util/theme';
 import { starts } from '../starts';
 import { format, splitPages } from '../util';
-import about1 from './about1.md';
+import about1 from './about.md';
 
 const cdn = createCDN({ fetchGitHub, getAvailableHost, resetCDNContext });
 
