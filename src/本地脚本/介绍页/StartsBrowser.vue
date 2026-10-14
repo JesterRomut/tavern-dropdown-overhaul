@@ -389,7 +389,7 @@ li.empty-moon {
 }
 .slide-fade-enter-from,
 .slide-fade-leave-to {
-  ul {
+  .browser-ul {
     height: unset;
     max-height: 0px !important;
   }
@@ -397,7 +397,7 @@ li.empty-moon {
 
 .slide-fade-enter-active,
 .slide-fade-leave-active {
-  ul {
+  .browser-ul {
     height: unset;
   }
 }
