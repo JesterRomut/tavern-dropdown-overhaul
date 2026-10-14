@@ -51,7 +51,13 @@ function rollMathName() {
 
 function copyName() {
   navigator.clipboard.writeText(randomName.value);
+  copiedName.value = true;
+  setTimeout(() => {
+    copiedName.value = false;
+  }, 1000);
 }
+
+const copiedName = ref(false);
 </script>
 
 <template>
@@ -72,17 +78,19 @@ function copyName() {
           <div class="name-gen">
             <button @click="rollMathName">
               <i class="fa-solid fa-dice"></i>
-              <span>点击随机代号{{ randomName ? ':' : '' }}</span>
+              <span>点击随机代号{{ randomName ? '：' : '' }}</span>
             </button>
             <button v-if="randomName" title="点击复制" @click="copyName">
               {{ randomName }}
             </button>
+
+            <small>{{ copiedName ? '已复制到剪贴板' : '' }}</small>
           </div>
         </div>
         <div>
           非自用的二改（任何修改）都需授权。二传需标明作者及原帖
           <br />
-          商业化禁止
+          商业化禁止，贩子脑袋爆炸
         </div>
       </template>
     </InfoSwipe>
@@ -174,9 +182,11 @@ code {
 
 .name-gen {
   background: rgba(255, 255, 255, 0.05);
-  margin-bottom: 0.5rem;
+  display: grid;
+
+  padding: 0.125rem;
+  border-radius: 4px;
   button {
-    padding-inline: 0.125rem;
     &:hover {
       color: color-mix(in srgb, aliceblue, var(--oz-highlight));
     }
@@ -184,9 +194,28 @@ code {
   button:first-of-type {
     user-select: none;
   }
+
+  small {
+    grid-column: span 2;
+    min-height: 1em;
+    line-height: 1em;
+    opacity: 0.5;
+  }
+
+  margin-bottom: 0.5rem;
 }
 
 div:has(> .name-gen) {
   display: flex;
 }
+
+// .name-gen-wrapper {
+//   display: flex;
+
+//   flex-direction: column;
+
+//   small {
+//     min-height: 1em;
+//   }
+// }
 </style>
