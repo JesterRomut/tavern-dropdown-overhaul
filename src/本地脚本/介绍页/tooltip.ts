@@ -177,9 +177,14 @@ function ensureMounted(): void {
   isMounted = true;
 }
 
+const SHOW_DELAY = 600;
+
 export const vTooltip: ObjectDirective<TooltipElement, TooltipContent> = {
   mounted(el: TooltipElement, binding: DirectiveBinding<TooltipContent>) {
     ensureMounted();
+
+    let touchStartX = 0;
+    let touchStartY = 0;
 
     const updatePosition = (clientX: number, clientY: number) => {
       state.x = clientX;
@@ -209,7 +214,7 @@ export const vTooltip: ObjectDirective<TooltipElement, TooltipContent> = {
           showTooltip(state.x, state.y);
         }
         el._timerId = undefined;
-      }, 500);
+      }, SHOW_DELAY);
     };
 
     const onMouseMove = (e: MouseEvent) => {
@@ -226,20 +231,45 @@ export const vTooltip: ObjectDirective<TooltipElement, TooltipContent> = {
 
     const onTouchStart = (e: TouchEvent) => {
       const touch = e.touches[0];
-      if (touch) {
-        showTooltip(touch.clientX, touch.clientY);
+      if (!touch) return;
+      if (el._timerId) {
+        clearTimeout(el._timerId);
+        el._timerId = undefined;
       }
+      touchStartX = touch.clientX;
+      touchStartY = touch.clientY;
+      updatePosition(touch.clientX, touch.clientY);
+      el._timerId = window.setTimeout(() => {
+        if (binding.value) {
+          showTooltip(state.x, state.y);
+        }
+        el._timerId = undefined;
+      }, SHOW_DELAY);
     };
 
     const onTouchMove = (e: TouchEvent) => {
-      if (!state.show) return;
       const touch = e.touches[0];
-      if (touch) {
+      if (!touch) return;
+      if (state.show) {
         updatePosition(touch.clientX, touch.clientY);
+      } else if (el._timerId) {
+        const dist = Math.hypot(touch.clientX - touchStartX, touch.clientY - touchStartY);
+        if (dist > 10) {
+          clearTimeout(el._timerId);
+          el._timerId = undefined;
+        } else {
+          updatePosition(touch.clientX, touch.clientY);
+        }
       }
     };
 
-    const onTouchEnd = () => hideTooltip();
+    const onTouchEnd = () => {
+      if (el._timerId) {
+        clearTimeout(el._timerId);
+        el._timerId = undefined;
+      }
+      hideTooltip();
+    };
 
     el._tooltipHandlers = {
       onMouseEnter,
