@@ -5,14 +5,18 @@ import {
   type DirectiveBinding,
   h,
   isVNode,
+  nextTick,
   type ObjectDirective,
+  onMounted,
+  onUnmounted,
   type Plugin,
   reactive,
+  ref,
   render,
   type VNode,
+  watch,
 } from 'vue';
 
-// 1. 类型定义
 export type TooltipContent = string | number | VNode | Component | (() => VNode | string | number) | null | undefined;
 
 interface TooltipState {
@@ -31,13 +35,11 @@ interface TooltipHandlers {
   onTouchEnd: () => void;
 }
 
-// 扩展 DOM 元素类型以缓存事件处理函数和定时器 ID
 interface TooltipElement extends HTMLElement {
   _tooltipHandlers?: TooltipHandlers;
-  _timerId?: number; // 新增：延迟定时器 ID
+  _timerId?: number;
 }
 
-// 2. 全局响应式状态
 const state = reactive<TooltipState>({
   show: false,
   x: 0,
@@ -45,14 +47,97 @@ const state = reactive<TooltipState>({
   content: null,
 });
 
-// 3. 渲染浮层组件
 const TooltipOverlay = {
   name: 'TooltipOverlay',
   setup() {
+    const tooltipRef = ref<HTMLElement | null>(null);
+
+    const updatePosition = () => {
+      const el = tooltipRef.value;
+      if (!el || !state.show) return;
+
+      const width = el.offsetWidth;
+      const height = el.offsetHeight;
+      if (width === 0 && height === 0) return;
+
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const GAP = 10;
+      const MARGIN = 12;
+      const ARROW_OFFSET = 16;
+
+      let left = state.x - width / 2;
+      left = Math.max(MARGIN, Math.min(left, vw - MARGIN - width));
+
+      const arrowLeft = Math.max(ARROW_OFFSET, Math.min(state.x - left, width - ARROW_OFFSET));
+
+      const spaceAbove = state.y - GAP - MARGIN;
+      const spaceBelow = vh - (state.y + GAP) - MARGIN;
+
+      let placement: 'top' | 'bottom';
+      let top: number;
+
+      if (spaceAbove >= height) {
+        placement = 'top';
+        top = state.y - GAP - height;
+      } else if (spaceBelow >= height) {
+        placement = 'bottom';
+        top = state.y + GAP;
+      } else if (spaceBelow > spaceAbove) {
+        placement = 'bottom';
+        top = Math.max(MARGIN, Math.min(state.y + GAP, vh - MARGIN - height));
+      } else {
+        placement = 'top';
+        top = Math.max(MARGIN, Math.min(state.y - GAP - height, vh - MARGIN - height));
+      }
+
+      const leftRounded = Math.round(left);
+      const topRounded = Math.round(top);
+      const arrowRounded = Math.round(arrowLeft);
+
+      el.style.left = `${leftRounded}px`;
+      el.style.top = `${topRounded}px`;
+      el.style.setProperty('--arrow-left', `${arrowRounded}px`);
+      el.style.visibility = 'visible';
+      el.className = `vue-custom-tooltip placement-${placement}`;
+    };
+
+    watch(
+      () => [state.show, state.content],
+      ([show]) => {
+        if (!show) {
+          if (tooltipRef.value) {
+            tooltipRef.value.style.visibility = 'hidden';
+          }
+        } else {
+          nextTick(() => {
+            updatePosition();
+          });
+        }
+      },
+    );
+
+    watch(
+      () => [state.x, state.y],
+      () => {
+        if (state.show) {
+          updatePosition();
+        }
+      },
+      { flush: 'sync' },
+    );
+
+    onMounted(() => {
+      window.addEventListener('resize', updatePosition);
+    });
+
+    onUnmounted(() => {
+      window.removeEventListener('resize', updatePosition);
+    });
+
     return () => {
       if (!state.show || !state.content) return null;
 
-      // 处理内容渲染
       let innerContent: VNode | string | number;
       if (typeof state.content === 'function') {
         innerContent = (state as any).content();
@@ -67,22 +152,21 @@ const TooltipOverlay = {
       return h(
         'div',
         {
+          ref: tooltipRef,
           class: 'vue-custom-tooltip',
           style: {
             position: 'fixed',
-            left: `${state.x}px`,
-            top: `${state.y}px`,
-            pointerEvents: 'none', // 避免遮挡鼠标/手势
-            zIndex: 9999,
+            visibility: 'hidden',
+            pointerEvents: 'none',
+            zIndex: 99999,
           },
         },
-        innerContent,
+        h('div', { class: 'tooltip-content' }, innerContent),
       );
     };
   },
 };
 
-// 4. 挂载单例到 document.body
 let isMounted = false;
 function ensureMounted(): void {
   if (isMounted || typeof window === 'undefined') return;
@@ -93,12 +177,10 @@ function ensureMounted(): void {
   isMounted = true;
 }
 
-// 5. 指令定义
 export const vTooltip: ObjectDirective<TooltipElement, TooltipContent> = {
   mounted(el: TooltipElement, binding: DirectiveBinding<TooltipContent>) {
     ensureMounted();
 
-    // ---- 统一的更新与隐藏逻辑 ----
     const updatePosition = (clientX: number, clientY: number) => {
       state.x = clientX;
       state.y = clientY;
@@ -116,19 +198,14 @@ export const vTooltip: ObjectDirective<TooltipElement, TooltipContent> = {
       state.content = null;
     };
 
-    // ---- PC 端事件（带 500ms 延迟） ----
     const onMouseEnter = (e: MouseEvent) => {
-      // 清除之前的定时器（如果有）
       if (el._timerId) {
         clearTimeout(el._timerId);
         el._timerId = undefined;
       }
-      // 记录初始位置
       updatePosition(e.clientX, e.clientY);
-      // 设置延迟显示
       el._timerId = window.setTimeout(() => {
         if (binding.value) {
-          // 使用当前已更新的最新位置（鼠标可能已经移动）
           showTooltip(state.x, state.y);
         }
         el._timerId = undefined;
@@ -136,21 +213,17 @@ export const vTooltip: ObjectDirective<TooltipElement, TooltipContent> = {
     };
 
     const onMouseMove = (e: MouseEvent) => {
-      // 始终更新位置，即使 tooltip 未显示，保证延迟触发时位置准确
       updatePosition(e.clientX, e.clientY);
     };
 
     const onMouseLeave = () => {
-      // 清除延迟定时器
       if (el._timerId) {
         clearTimeout(el._timerId);
         el._timerId = undefined;
       }
-      // 隐藏 tooltip（如果正在显示）
       hideTooltip();
     };
 
-    // ---- 移动端 Touch 事件（无延迟，立即显示） ----
     const onTouchStart = (e: TouchEvent) => {
       const touch = e.touches[0];
       if (touch) {
@@ -168,7 +241,6 @@ export const vTooltip: ObjectDirective<TooltipElement, TooltipContent> = {
 
     const onTouchEnd = () => hideTooltip();
 
-    // 缓存 handlers 以便 unmounted 清理
     el._tooltipHandlers = {
       onMouseEnter,
       onMouseMove,
@@ -178,12 +250,10 @@ export const vTooltip: ObjectDirective<TooltipElement, TooltipContent> = {
       onTouchEnd,
     };
 
-    // 注册 PC 监听
     el.addEventListener('mouseenter', onMouseEnter);
     el.addEventListener('mousemove', onMouseMove);
     el.addEventListener('mouseleave', onMouseLeave);
 
-    // 注册移动端监听 (使用 passive: true 保证滑动流畅)
     el.addEventListener('touchstart', onTouchStart, { passive: true });
     el.addEventListener('touchmove', onTouchMove, { passive: true });
     el.addEventListener('touchend', onTouchEnd);
@@ -197,7 +267,6 @@ export const vTooltip: ObjectDirective<TooltipElement, TooltipContent> = {
   },
 
   unmounted(el: TooltipElement) {
-    // 清除定时器
     if (el._timerId) {
       clearTimeout(el._timerId);
       el._timerId = undefined;
@@ -205,12 +274,10 @@ export const vTooltip: ObjectDirective<TooltipElement, TooltipContent> = {
 
     const handlers = el._tooltipHandlers;
     if (handlers) {
-      // 移除 PC 监听
       el.removeEventListener('mouseenter', handlers.onMouseEnter);
       el.removeEventListener('mousemove', handlers.onMouseMove);
       el.removeEventListener('mouseleave', handlers.onMouseLeave);
 
-      // 移除移动端监听
       el.removeEventListener('touchstart', handlers.onTouchStart);
       el.removeEventListener('touchmove', handlers.onTouchMove);
       el.removeEventListener('touchend', handlers.onTouchEnd);
@@ -221,7 +288,6 @@ export const vTooltip: ObjectDirective<TooltipElement, TooltipContent> = {
   },
 };
 
-// 6. 导出插件
 const TooltipPlugin: Plugin = {
   install(app: App) {
     app.directive('tooltip', vTooltip);

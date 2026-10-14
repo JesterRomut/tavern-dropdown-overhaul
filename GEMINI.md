@@ -3,19 +3,22 @@
 @.cursor/rules/项目基本概念.mdc
 @.cursor/rules/酒馆变量.mdc
 @.cursor/rules/酒馆助手接口.mdc
-@.cursor/rules/脚本.mdc
 
-以上酒馆相关**必看**，不看找人弄你
+↑酒馆相关**必看**，不看找人弄你
 然后zod用v4规范，deprecated的东西不要用
 
-@.cursor/rules/前端界面.mdc
+首先你要辨别你当前在写什么：
+  前端界面:
+    路径中有index.html、index.ts、和.vue（通常为page.vue）
+    注意.vue文件不一定是前端界面，也可能是内嵌在脚本中用的
+    @.cursor/rules/前端界面.mdc
+  脚本:
+    路径中仅有index.ts，无index.html
+    @.cursor/rules/脚本.mdc
+  其它:
+    如果啥都不是就不要看文件费你token了
 
-写前端界面（如果有index.html就是前端界面，没有就不是）必看，不看找人弄你
-注意.vue文件不一定是前端界面，也可能是内嵌在脚本中用的
-
-@.cursor/rules/mcp.mdc
-
-debug必看，里面写了如何用Chrome DevTools MCP来实操浏览器
+你可以用Chrome DevTools MCP来实操浏览器
 
 ---
 其它规则:
@@ -25,3 +28,4 @@ debug必看，里面写了如何用Chrome DevTools MCP来实操浏览器
   3. 不需要手动用prettier或pnpm build，我通常开着dev服务器会自动build，有报错我会通知你
   4. 代码质量代码质量代码质量！！！查看代码库梳理实际功能接口 一个接口对于一个实现 所有的汇总为文档 一个功能不需要实现多种样式 以第一性原理构思 不要做冗余和兜底 对于能够a b解决的就不要abcd拆分 这种是臭抽象 然后思考整体价格是否有摆放不合理的架构 数据在层次间反复传输 导致冗余接口和性能低下，，我们的代码都是要打包的，在能用的同时写的越小越好
   5. 不要擅自写更新日志，只提示我写
+  6. 不要写注释
