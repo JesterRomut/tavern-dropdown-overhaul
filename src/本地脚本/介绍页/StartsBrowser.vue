@@ -140,7 +140,7 @@ const filteredStarts = computed(() => {
 
   return starts.filter(s => {
     // 1. 若开启“仅看收藏”，非收藏项直接短路跳过
-    if (favOnly && !isFavorite(s.id, s.uid)) return false;
+    if (favorites.value.size > 0 && favOnly && !isFavorite(s.id, s.uid)) return false;
 
     // 2. 必选标签：必须全部包含
     if (reqTags.length > 0 && !reqTags.every(t => s.tags.has(t))) return false;
