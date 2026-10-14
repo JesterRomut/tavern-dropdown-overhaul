@@ -313,7 +313,7 @@ export default {
     </Transition>
   </section>
 </template>
-<style scoped lang="scss">
+<style lang="scss">
 .disabled {
   color: #888;
   h3 {
