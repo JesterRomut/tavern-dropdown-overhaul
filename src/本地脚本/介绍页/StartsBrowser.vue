@@ -207,7 +207,7 @@ function formatTooltip(s: Start) {
           ></Transition>
         </div>
 
-        <ul>
+        <ul class="browser-ul">
           <li v-tooltip="'此介绍页不会发送给AI：直接发送消息即可。'">
             <div><span>1</span>（自定义开局/本介绍页不会发送给AI）</div>
           </li>
@@ -402,7 +402,7 @@ li.empty-moon {
   }
 }
 
-ul {
+.browser-ul {
   height: 20rem;
   max-height: 20rem;
   overflow-x: auto;
