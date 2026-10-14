@@ -65,6 +65,7 @@ main {
         border-radius: 4px;
         border: none;
         background: color-mix(in srgb, var(--SmartThemeQuoteColor) 20%, transparent);
+        color: contrast-color(color-mix(in srgb, var(--SmartThemeQuoteColor) 20%, var(--SmartThemeBlurTintColor)));
       }
     }
   }
