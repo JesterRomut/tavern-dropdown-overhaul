@@ -60,7 +60,6 @@ interface GalleryItem extends AvatarInfo {
   loading?: boolean;
 }
 const gallery = ref<GalleryItem[]>([]);
-const manifestError: Ref<string | null> = ref(null);
 const pendingAvatarIndex = ref<number | null>(null); // 当前弹出确认框的卡面索引
 const isApplying = ref(false); // 是否正在应用中
 let isUnmounted = false;
@@ -107,35 +106,35 @@ async function loadGalleryImages() {
 }
 
 async function initGallery() {
-  if (gallery.value.length > 0 && !manifestError.value) {
+  if (gallery.value.length > 0 && !offlineText.value) {
     loadGalleryImages();
     return;
   }
-  manifestError.value = null;
 
-  // const resp = await cdn.fetch('gh/JesterRomut/tavern-resources@main/character/OZ/avatar/index.json');
-  const resp = await cdn.fetchGitHub(manifest.repo, manifest.path);
-  if (!resp.ok) {
-    manifestError.value = `加载失败：${resp.status}${resp.statusText ? ' - ' + resp.statusText : ''}`;
-    return;
+  try {
+    const resp = await cdn.fetchGitHub(manifest.repo, manifest.path);
+    if (!resp.ok) {
+      offlineText.value = formatOfflineText(resp.status);
+      return;
+    }
+    const rawJson = await resp.json();
+
+    const parsed = AvatarManifest.safeParse(rawJson);
+    if (!parsed.success) {
+      offlineText.value = formatOfflineText();
+      return;
+    }
+
+    gallery.value = parsed.data.map(item => ({
+      ...item,
+      loading: false,
+      error: false,
+    }));
+
+    loadGalleryImages();
+  } catch (err) {
+    offlineText.value = formatOfflineText(extractStatusCode(err));
   }
-  const rawJson = await resp.json();
-
-  // Zod 类型校验
-  const parsed = AvatarManifest.safeParse(rawJson);
-  if (!parsed.success) {
-    manifestError.value = `类型校验失败：需要更新角色卡。`;
-    return;
-  }
-  const manifes = parsed.data;
-
-  gallery.value = manifes.map(item => ({
-    ...item,
-    loading: false,
-    error: false,
-  }));
-
-  loadGalleryImages();
 }
 
 function selectAvatar(index: number) {
@@ -170,21 +169,31 @@ async function updateCharacterAvatar(blob: Blob) {
   });
 }
 
-const online = ref(window.navigator.onLine);
+function formatOfflineText(status?: number | string | null): string {
+  return status ? `离线模式不可用 (状态码: ${status})` : '离线模式不可用';
+}
+
+function extractStatusCode(err: any): string | null {
+  return (err?.cause?.message || err?.message)?.match(/\b([45]\d{2})\b/)?.[1] ?? null;
+}
+
+const offlineText = ref<string | null>(null);
 
 async function checkConnectivity() {
   if (!window.navigator.onLine) {
-    online.value = false;
+    offlineText.value = formatOfflineText();
     return;
   }
-  try {
-    const host = await cdn.getAvailableHost();
-    online.value = host !== null;
-  } catch {
-    online.value = false;
+
+  const host = await cdn.getAvailableHost();
+  if (!host) {
+    offlineText.value = formatOfflineText();
+    return;
   }
 
-  if (online.value && open.value) {
+  offlineText.value = null;
+
+  if (open.value) {
     initGallery();
   }
 }
@@ -194,7 +203,7 @@ const handleOnline = () => {
 };
 
 const handleOffline = () => {
-  online.value = false;
+  offlineText.value = formatOfflineText();
   cdn.resetCDNContext();
 };
 
@@ -225,9 +234,9 @@ export default {
 };
 </script>
 <template>
-  <section v-if="!online" class="oz-section disabled" aria-disabled @click="checkConnectivity">
+  <section v-if="offlineText" class="oz-section disabled" aria-disabled>
     <h3>
-      <span><i class="fa-solid fa-image-portrait"></i> 卡面切换</span><u>离线模式不可用</u>
+      <span><i class="fa-solid fa-image-portrait"></i> 卡面切换</span><u>{{ offlineText }}</u>
     </h3>
   </section>
   <section v-else class="oz-section">
@@ -248,15 +257,7 @@ export default {
     </h3>
     <Transition name="slide-fade">
       <div v-if="open">
-        <!-- Manifest 清单加载失败 -->
-        <div v-if="manifestError !== null" class="manifest-error" @click="initGallery">
-          <p>
-            <i class="fa-regular fa-moon"></i>
-            <span>未能连接维度X……点击重试</span>
-          </p>
-          <p>{{ manifestError }}</p>
-        </div>
-        <div v-else-if="gallery.length <= 0" class="manifest-loading">
+        <div v-if="gallery.length <= 0" class="manifest-loading">
           <i class="fa-solid fa-spinner fa-spin"></i>
           <span>正在获取卡面列表...</span>
         </div>
@@ -316,6 +317,7 @@ export default {
 <style lang="scss">
 .disabled {
   color: #888;
+  cursor: not-allowed;
   h3 {
     align-items: center;
   }
@@ -326,16 +328,11 @@ export default {
   }
 }
 
-.manifest-error,
 .manifest-loading {
   color: #888;
   font-style: italic;
   padding-left: 0.5rem;
   padding-top: 0.5rem;
-
-  .fa-regular {
-    align-self: baseline;
-  }
 }
 
 .slide-fade-enter-from,
