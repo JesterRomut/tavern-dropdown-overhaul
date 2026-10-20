@@ -121,7 +121,7 @@ async function initGallery() {
 
     const parsed = AvatarManifest.safeParse(rawJson);
     if (!parsed.success) {
-      offlineText.value = formatOfflineText();
+      offlineText.value = formatOfflineText('类型校验失败：需要更新角色卡');
       return;
     }
 
@@ -170,7 +170,7 @@ async function updateCharacterAvatar(blob: Blob) {
 }
 
 function formatOfflineText(status?: number | string | null): string {
-  return status ? `离线模式不可用 (状态码: ${status})` : '离线模式不可用';
+  return status ? `离线模式不可用 (${status})` : '离线模式不可用';
 }
 
 function extractStatusCode(err: any): string | null {
